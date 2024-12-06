@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  TRANSFER
+  SPEI
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  RECONCILED
+  CANCELLED
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  debts     Debt[]
+
+  @@map("clients")
+}
+
+model Debt {
+  id            String     @id @default(cuid())
+  amountInCents Int
+  status        DebtStatus @default(PENDING)
+  contacted     Boolean    @default(false)
+  clientId      String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  dueDate       String
+  calls         Call[]
+  client        Client     @relation(fields: [clientId], references: [id])
+
+  @@map("debts")
+}
+
+model Call {
+  id        String     @id @default(cuid())
+  debtId    String
+  duration  Int?
+  status    CallStatus
+  recording String?
+  createdAt DateTime   @default(now())
+  debt      Debt       @relation(fields: [debtId], references: [id])
+
+  @@map("calls")
+}
+
+enum DebtStatus {
+  PENDING
+  OVERDUE
+  PAID
+}
+
+enum CallStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NO_ANSWER
+}

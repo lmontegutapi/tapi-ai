@@ -27,7 +27,7 @@ let conversationHistory: any[] = []
 
       Datos importantes:
       - Cliente: ${call?.debt.client.name}
-      - Deuda: $${call?.debt.amountInCents/100}
+      - Deuda: $${call?.debt.amountInCents ? call?.debt.amountInCents / 100 : 0}
       - Vencimiento: ${call?.debt.dueDate}
       - Estado: ${call?.debt.status}
 

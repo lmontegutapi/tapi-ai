@@ -11,7 +11,7 @@ export interface DebtUpload {
 export async function POST(request: Request) {
   try {
     const debts: DebtUpload[] = await request.json()
-    
+
     const results = await Promise.all(
       debts.map(async (debt) => {
         // Buscar o crear cliente
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         const debtRecord = await prisma.debt.create({
           data: {
             amountInCents: debt.amountInCents,
-            dueDate: debt.dueDate,
+            dueDate: debt.dueDate.toISOString(),
             status: debt.dueDate < new Date() ? 'OVERDUE' : 'PENDING',
             clientId: client.id,
           },

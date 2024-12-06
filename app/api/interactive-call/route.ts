@@ -54,7 +54,7 @@ let conversationHistory: any[] = []
   conversationHistory.push({ role: "assistant", content: response })
 
   const audioResponse = await ElevenLabsClient.generateAudio({
-    text: response,
+    text: response!,
     voiceId: process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID!
   })
 
@@ -62,7 +62,7 @@ let conversationHistory: any[] = []
   twiml.play(audioResponse.url)
   
   twiml.gather({
-    input: 'speech',
+    input: ['speech'],
     language: 'es-MX',
     action: `${process.env.NEXT_PUBLIC_BASE_URL}/api/interactive-call`,
     method: 'POST'

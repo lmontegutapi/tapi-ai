@@ -55,7 +55,7 @@ let conversationHistory: any[] = []
 
   const audioResponse = await ElevenLabsClient.generateAudio({
     text: response!,
-    voiceId: process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID!
+    voiceId: process.env.ELEVENLABS_VOICE_ID!
   })
 
   const twiml = new twilio.twiml.VoiceResponse()

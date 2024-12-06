@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const call = await TwilioClient.calls.create({
     to: `+${debtRecord.phoneNumber}`,
     method: 'POST',
-    from: process.env.NEXT_PUBLIC_TWILIO_PHONE_NUMBER!,
+    from: process.env.TWILIO_PHONE_NUMBER!,
     //url: "http://demo.twilio.com/docs/voice.xml"
     url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/voice-webhook`,
     //statusCallback: `${process.env.NEXT_PUBLIC_BASE_URL}/api/call-status`

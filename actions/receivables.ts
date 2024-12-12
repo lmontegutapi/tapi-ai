@@ -142,3 +142,27 @@ export async function createReceivables(
     }
   }
 }
+
+export async function getReceivables() {
+  const data = await auth.api.getSession({
+    headers: headers()
+  })
+
+  if(!data?.session.activeOrganizationId) {
+    return {
+      success: false,
+      error: "No se pudo obtener la organización activa"
+    }
+  }
+
+  const receivables = await prisma.receivable.findMany({
+    where: { 
+      organizationId: data.session.activeOrganizationId
+    },
+    include: {
+      contact: true
+    }
+  })
+
+  return receivables
+}

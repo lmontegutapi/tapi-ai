@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -121,33 +122,33 @@ model Invitation {
 }
 
 model Receivable {
-  id            String    @id @default(cuid())
+  id             String           @id @default(cuid())
   organizationId String
-  organization  Organization @relation(fields: [organizationId], references: [id])
-  contactId     String      // Relación con el contacto
-  contact       Contact     @relation(fields: [contactId], references: [id])
-  paymentId     String     
-  amount        Decimal    
-  dueDate       DateTime   
-  status        ReceivableStatus
-  isPastDue     Boolean   @default(false)
-  isOpen        Boolean   @default(true)   
-  calls         Call[]    
-  campaignId    String?
-  campaign      Campaign? @relation(fields: [campaignId], references: [id])
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  contactId      String // Relación con el contacto
+  contact        Contact          @relation(fields: [contactId], references: [id])
+  paymentId      String
+  amount         Decimal
+  dueDate        DateTime
+  status         ReceivableStatus
+  isPastDue      Boolean          @default(false)
+  isOpen         Boolean          @default(true)
+  calls          Call[]
+  campaignId     String?
+  campaign       Campaign?        @relation(fields: [campaignId], references: [id])
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@index([paymentId])
   @@map("receivable")
 }
 
 enum ReceivableStatus {
-  OPEN          // Abierto
-  CLOSED        // Cerrado
-  OVERDUE       // Vencido
-  PENDING_DUE   // Por vencer
+  OPEN // Abierto
+  CLOSED // Cerrado
+  OVERDUE // Vencido
+  PENDING_DUE // Por vencer
 }
 
 model Campaign {
@@ -164,6 +165,10 @@ model Campaign {
   objective      String
   welcomeMessage String
   voiceType      String
+  totalCalls     Int          // Total de llamadas a realizar
+  completedCalls Int          @default(0) // Llamadas realizadas
+  successfulCalls Int         @default(0) // Llamadas exitosas
+  failedCalls    Int         @default(0) // Llamadas fallidas
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   calls          Call[]
@@ -180,10 +185,10 @@ model Contact {
   name           String
   email          String?
   phone          String?
-  rfc            String?     // Para México
+  rfc            String? // Para México
   address        String?
   paymentTerms   Int?
-  identifier     String?     // Para integración con TAPI
+  identifier     String? // Para integración con TAPI
   metadata       Json?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -200,19 +205,19 @@ model Call {
   id             String     @id @default(cuid())
   campaignId     String
   campaign       Campaign   @relation(fields: [campaignId], references: [id])
-  receivableId   String    
+  receivableId   String
   receivable     Receivable @relation(fields: [receivableId], references: [id])
   status         CallStatus
-  duration       Int?      
-  recording      String?   
-  transcript     String?   
-  paymentPromise Boolean   @default(false)
+  duration       Int?
+  recording      String?
+  transcript     String?
+  paymentPromise Boolean    @default(false)
   promisedAmount Decimal?
   promisedDate   DateTime?
-  aiResponse     Json?     
-  userResponse   Json?     
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  aiResponse     Json?
+  userResponse   Json?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@map("call")
 }
@@ -295,22 +300,22 @@ model InvoiceItem {
 }
 
 model PaymentLink {
-  id                 String               @id @default(cuid())
-  publicId           String               @unique
-  organizationId     String
-  invoiceId          String?
-  amount             Decimal
-  status             PaymentLinkStatus
-  expiresAt          DateTime?
-  metadata           Json?
-  accessCount        Int                  @default(0)
-  lastAccessedAt     DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  invoice            Invoice?             @relation(fields: [invoiceId], references: [id])
-  organization       Organization         @relation(fields: [organizationId], references: [id])
+  id                  String               @id @default(cuid())
+  publicId            String               @unique
+  organizationId      String
+  invoiceId           String?
+  amount              Decimal
+  status              PaymentLinkStatus
+  expiresAt           DateTime?
+  metadata            Json?
+  accessCount         Int                  @default(0)
+  lastAccessedAt      DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  invoice             Invoice?             @relation(fields: [invoiceId], references: [id])
+  organization        Organization         @relation(fields: [organizationId], references: [id])
   paymentTransactions PaymentTransaction[]
-  paymentMethods     PaymentMethod[]      @relation("payment_link_to_payment_method")
+  paymentMethods      PaymentMethod[]      @relation("payment_link_to_payment_method")
 
   @@map("payment_link")
 }

@@ -31,7 +31,6 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-import { auth } from "../../lib/auth";
 
 export function NavUser() {
   const router = useRouter();
@@ -42,10 +41,6 @@ export function NavUser() {
     error, //error object
   } = authClient.useSession();
   
-  if(!session) {
-    router.push("/login");
-  }
-
   const user = session?.user;
 
   const logout = async () => {

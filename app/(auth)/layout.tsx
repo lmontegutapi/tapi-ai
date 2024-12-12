@@ -65,7 +65,7 @@ export default function AuthLayout({
               </clipPath>
             </defs>
           </svg>
-          TapiFlow
+          TapFlow
         </div>
       </div>
       <div className="lg:p-8">

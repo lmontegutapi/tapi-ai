@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { organization, admin } from "better-auth/plugins"
 import { organizationClient } from "better-auth/client/plugins"
 import { nextCookies } from "better-auth/next-js";
+import { openAPI } from "better-auth/plugins"
 
 const prisma = new PrismaClient();
 export const auth = betterAuth({
@@ -17,5 +18,5 @@ export const auth = betterAuth({
     database: prismaAdapter(prisma, {
       provider: "postgresql", // or "mysql", "postgresql", ...etc
     }),
-    plugins: [organization(), admin(), organizationClient(), nextCookies()],
+    plugins: [organization(), admin(), organizationClient(), nextCookies(), openAPI()],
 });

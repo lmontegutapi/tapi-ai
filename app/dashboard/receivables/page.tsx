@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { EmptyState } from "@/components/receivables/empty-state";
 import { ReceivablesTable } from "@/components/receivables/table";
-//import { getReceivables } from "@/lib/api/receivables"
-import { Skeleton } from "@/components/ui/skeleton";
+import { getReceivables } from "@/actions/receivables"
+import { TableSkeleton } from "@/components/table-skeleton";
 
-export default function ReceivablesPage() {
-  //const receivables = await getReceivables()
-  const receivables = [];
+export default async function ReceivablesPage() {
+  const receivables = await getReceivables()
+
   return (
     <div className="container py-6">
       <div className="flex items-center justify-between mb-8">
@@ -16,7 +16,9 @@ export default function ReceivablesPage() {
       {receivables.length === 0 ? (
         <EmptyState />
       ) : (
-        <ReceivablesTable data={receivables} />
+        <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
+          <ReceivablesTable data={receivables} />
+        </Suspense>
       )}
     </div>
   );

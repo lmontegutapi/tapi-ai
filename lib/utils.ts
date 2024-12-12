@@ -66,3 +66,10 @@ export function generateSlug(text: string): string {
     .replace(/\s+/g, '-') // Reemplazar espacios con guiones
     .replace(/-+/g, '-') // Evitar guiones múltiples
 }
+
+export function formatDuration(duration: number) {
+  const hours = Math.floor(duration / 3600)
+  const minutes = Math.floor((duration % 3600) / 60)
+  const seconds = duration % 60
+  return `${hours}h ${minutes}m ${seconds}s`
+}

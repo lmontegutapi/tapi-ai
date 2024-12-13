@@ -13,7 +13,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ReceivableWithContact } from "@/types/receivables"
+import { 
+  initiateCall, 
+  registerPayment, 
+  markAsOverdue,
+} from "@/actions/receivables"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import { toast } from "@/hooks/use-toast"
+import { CallDialog } from "./call-dialog"
+import { EditReceivableDrawer } from "./edit-receivable-drawer"
+import { Pencil } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 export const columns: ColumnDef<ReceivableWithContact>[] = [
   {
@@ -98,46 +109,119 @@ export const columns: ColumnDef<ReceivableWithContact>[] = [
     id: "actions",
     cell: ({ row }) => {
       const receivable = row.original
+      const [showCallDialog, setShowCallDialog] = useState(false)
+      const [showEditDrawer, setShowEditDrawer] = useState(false)
+      const router = useRouter()
+  
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => handleCall(receivable)}
-            >
-              <Phone className="mr-2 h-4 w-4" />
-              Llamar
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <DollarSign className="mr-2 h-4 w-4" />
-              Registrar pago
-            </DropdownMenuItem>
-            <DropdownMenuItem>Ver historial</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
-              Marcar vencido
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Abrir menú</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setShowCallDialog(true)}>
+                <Phone className="mr-2 h-4 w-4" />
+                Llamar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowEditDrawer(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleRegisterPayment(receivable)}>Registrar pago</DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600" onClick={() => handleMarkAsOverdue(receivable)}>
+                Marcar vencido
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+  
+          <CallDialog 
+            receivable={receivable}
+            open={showCallDialog}
+            onOpenChange={setShowCallDialog}
+          />
+  
+          <EditReceivableDrawer
+            receivable={receivable}
+            open={showEditDrawer}
+            onOpenChange={setShowEditDrawer}
+            onSuccess={() => {
+              // Refrescar datos
+              router.refresh()
+            }}
+          />
+        </>
       )
-    },
-  },
+    }
+  }
 ]
 
 const handleCall = async (receivable: ReceivableWithContact) => {
-  // Implementar la lógica de llamada
+  try {
+    const result = await initiateCall(receivable.id)
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+    
+    toast({
+      title: "Llamada iniciada",
+      description: "Se ha iniciado la llamada correctamente"
+    })
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "No se pudo iniciar la llamada"
+    })
+  }
 }
 
 const handleRegisterPayment = async (receivable: ReceivableWithContact) => {
-  // Implementar la lógica de registro de pago
+  try {
+    const result = await registerPayment(receivable.id, {
+      amount: Number(receivable.amount),
+      paymentDate: new Date(),
+      paymentMethod: "CASH" // O mostrar un modal para seleccionar
+    })
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+
+    toast({
+      title: "Pago registrado",
+      description: "El pago se ha registrado correctamente"
+    })
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "No se pudo registrar el pago"
+    })
+  }
 }
 
 const handleMarkAsOverdue = async (receivable: ReceivableWithContact) => {
-  // Implementar la lógica de marcado como vencido
+  try {
+    const result = await markAsOverdue(receivable.id)
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+
+    toast({
+      title: "Estado actualizado",
+      description: "La deuda se ha marcado como vencida"
+    })
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "No se pudo actualizar el estado"
+    })
+  }
 }

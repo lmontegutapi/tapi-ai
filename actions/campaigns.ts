@@ -12,111 +12,91 @@ import type { Organization, Campaign } from "@prisma/client";
 const campaignSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   context: z.string().min(10, "El contexto debe tener al menos 10 caracteres"),
-  objective: z
-    .string()
-    .min(10, "El objetivo debe tener al menos 10 caracteres"),
-  welcomeMessage: z
-    .string()
-    .min(10, "El mensaje debe tener al menos 10 caracteres"),
-  startDate: z.string().transform((str) => new Date(str)),
-  endDate: z.string().transform((str) => new Date(str)),
-  startTime: z
-    .string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
-  endTime: z
-    .string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
-  callsPerUser: z.number().min(1).max(10),
-  voiceType: z.string(),
-  receivableIds: z
-    .array(z.string())
-    .min(1, "Debe seleccionar al menos una deuda"),
+  objective: z.string().min(10, "El objetivo debe tener al menos 10 caracteres"),
+  welcomeMessage: z.string().min(10, "El mensaje debe tener al menos 10 caracteres"),
+  startDate: z.string(),
+  endDate: z.string(),
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
+  callsPerUser: z.coerce.number().min(1).max(10),
+  agentId: z.string().min(1, "Debes seleccionar un agente"),
+  voiceType: z.enum(["NEUTRAL", "FRIENDLY", "PROFESSIONAL"]).default("NEUTRAL"),
+  receivableIds: z.array(z.string()).min(1, "Debes seleccionar al menos una deuda")
 });
 
 type CampaignInput = z.infer<typeof campaignSchema>;
 
-export async function createCampaign(input: CampaignInput) {
+export async function createCampaign(data: z.infer<typeof campaignSchema>) {
   try {
-    const session = await sessionServer();
+    const session = await sessionServer()
     if (!session) {
-      return {
-        success: false,
-        error: "No autorizado",
-      };
+      return { success: false, error: "No autorizado" }
     }
 
-    // Validar input
-    const validatedData = campaignSchema.parse(input);
-
-    // Validar fechas
-    if (validatedData.startDate > validatedData.endDate) {
-      return {
-        success: false,
-        error: "La fecha de inicio debe ser anterior a la fecha de fin",
-      };
-    }
-
-    // Obtener organización activa
+    // Obtener la organización activa
     const organization = await prisma.organization.findFirst({
       where: {
         members: {
           some: {
-            userId: session.user.id,
-          },
-        },
-      },
-    });
+            userId: session.user.id
+          }
+        }
+      }
+    })
 
     if (!organization) {
-      return {
-        success: false,
-        error: "No se encontró una organización",
-      };
+      return { success: false, error: "Organización no encontrada" }
     }
 
-    // Crear campaña
+    // Verificar que el agente exista y pertenezca a la organización
+    const agent = await prisma.agent.findFirst({
+      where: {
+        id: data.agentId,
+        organizationId: organization.id
+      }
+    })
+
+    if (!agent) {
+      return { success: false, error: "Agente no encontrado" }
+    }
+
     const campaign = await prisma.campaign.create({
       data: {
-        ...validatedData,
         organizationId: organization.id,
+        name: data.name,
+        context: data.context,
+        objective: data.objective,
+        welcomeMessage: data.welcomeMessage,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        startTime: data.startTime,
+        endTime: data.endTime,
+        callsPerUser: data.callsPerUser,
+        agentId: data.agentId,
+        totalCalls: data.receivableIds.length * data.callsPerUser,
         status: "DRAFT",
-      },
-    });
+        voiceType: data.voiceType ?? "NEUTRAL",
+        receivables: {
+          connect: data.receivableIds.map(id => ({ id }))
+        }
+      }
+    })
 
-    // Asociar receivables
-    await prisma.receivable.updateMany({
-      where: {
-        id: {
-          in: validatedData.receivableIds,
-        },
-      },
-      data: {
-        campaignId: campaign.id,
-      },
-    });
-
-    revalidatePath("/dashboard/campaigns");
+    revalidatePath('/dashboard/campaigns')
 
     return {
       success: true,
-      data: campaign,
-    };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: "Datos inválidos",
-        errors: error.errors,
-      };
+      data: campaign
     }
 
+  } catch (error) {
+    console.error('Error creating campaign:', error)
     return {
       success: false,
-      error: "Error al crear la campaña",
-    };
+      error: "Error al crear la campaña"
+    }
   }
 }
-
 export async function updateCampaign(
   campaignId: string,
   input: Partial<CampaignInput>

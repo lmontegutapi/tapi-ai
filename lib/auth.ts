@@ -19,4 +19,13 @@ export const auth = betterAuth({
       provider: "postgresql", // or "mysql", "postgresql", ...etc
     }),
     plugins: [organization(), admin(), organizationClient(), nextCookies(), openAPI()],
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            console.log("session from before create", session)
+          }
+        }
+      }
+    },
 });

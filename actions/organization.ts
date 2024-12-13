@@ -118,3 +118,24 @@ export async function setActiveOrganization(organizationId: string): Promise<any
     }
   })
 }
+
+/* export async function getOrganizationByUserId(userId: string) {
+  const data = await session()
+
+  if(!data) {
+    return null
+  }
+
+  const organization = await auth.api.getFullOrganization({
+    query: {
+      organizationId: data?.session?.activeOrganizationId
+    },
+    headers: headers()
+  })
+
+  if(!organization) {
+    return null
+  }
+
+  return organization
+} */

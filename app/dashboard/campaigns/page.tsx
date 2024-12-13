@@ -1,15 +1,24 @@
-import { Suspense } from "react"
-import { Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { CampaignsTable } from "@/components/campaigns/table"
-import { columns } from "@/components/campaigns/columns"
-import Link from "next/link"
-import { TableSkeleton } from "@/components/table-skeleton"
-import { getCampaigns } from "@/actions/campaigns"
+import { Suspense } from "react";
+import { Separator } from "@/components/ui/separator";
+import { CampaignsTable } from "@/components/campaigns/table";
+import { columns } from "@/components/campaigns/columns";
+import { TableSkeleton } from "@/components/table-skeleton";
+import { NewCampaignDrawer } from "@/components/campaigns/new-campaign-drawer";
+import { getCampaigns } from "@/actions/campaigns";
+import { getAgents } from "@/actions/agents";
+import { getReceivables } from "@/actions/receivables";
+import { EmptyCampaigns } from "@/components/campaigns/empty-campaigns";
 
 export default async function CampaignsPage() {
-  const campaigns = await getCampaigns()
+  const campaigns = await getCampaigns();
+  const agentsResponse = await getAgents();
+  const agents = Array.isArray(agentsResponse)
+    ? agentsResponse
+    : [];
+  const receivablesResponse = await getReceivables();
+  const receivables = Array.isArray(receivablesResponse)
+    ? receivablesResponse
+    : [];
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6">
@@ -20,11 +29,16 @@ export default async function CampaignsPage() {
             Gestiona tus campañas de cobranza y realiza llamadas automáticas
           </p>
         </div>
+        <NewCampaignDrawer agents={agents} receivables={receivables} />
       </div>
       <Separator />
-      <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
-        <CampaignsTable columns={columns} data={campaigns} />
-      </Suspense>
+      {!campaigns || campaigns.length === 0 ? (
+        <EmptyCampaigns />
+      ) : (
+        <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
+          <CampaignsTable columns={columns} data={campaigns} />
+        </Suspense>
+      )}
     </div>
-  )
+  );
 }

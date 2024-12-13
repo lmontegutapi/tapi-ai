@@ -98,7 +98,7 @@ const data = {
     },
     {
       title: "Agentes AI",
-      url: "/dashboard/ai-agents",
+      url: "/dashboard/agents",
       icon: Bot,
       /* items: [
         {
@@ -142,7 +142,7 @@ const data = {
       title: "Configuración",
       url: "/dashboard/settings",
       icon: Settings,
-      items: [
+      /* items: [
         {
           title: "General",
           url: "/dashboard/settings",
@@ -155,11 +155,11 @@ const data = {
           title: "Equipo",
           url: "/dashboard/settings/team",
         },
-/*         {
+        {
           title: "Integraciones",
           url: "/dashboard/settings/integrations",
-        } */
-      ],
+        }
+      ], */
     },
   ],
   /* navSecondary: [
@@ -231,9 +231,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </svg>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold uppercase">
+                  <h3 className="truncate font-bold">
                     TapFlow
-                  </span>
+                  </h3>
                   <span className="truncate text-xs">AI-powered</span>
                 </div>
               </a>

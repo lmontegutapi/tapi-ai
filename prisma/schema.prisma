@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -76,21 +75,26 @@ model Verification {
 }
 
 model Organization {
-  id            String          @id
-  name          String
-  slug          String?         @unique
-  logo          String?
-  createdAt     DateTime
-  metadata      String?
-  campaigns     Campaign[]
-  contact       Contact[]
-  emailTemplate EmailTemplate[]
-  invitations   Invitation[]
-  invoice       Invoice[]
-  members       Member[]
-  paymentLink   PaymentLink[]
-  paymentMethod PaymentMethod[]
-  receivables   Receivable[]
+  id                String              @id
+  name              String
+  slug              String?             @unique
+  logo              String?
+  createdAt         DateTime
+  metadata          String?
+  campaigns         Campaign[]
+  contact           Contact[]
+  emailTemplate     EmailTemplate[]
+  invitations       Invitation[]
+  invoice           Invoice[]
+  members           Member[]
+  paymentLink       PaymentLink[]
+  paymentMethod     PaymentMethod[]
+  receivables       Receivable[]
+  agent             Agent[]
+  agentPerformance  AgentPerformance[]
+  campaignMetrics   CampaignMetrics[]
+  collectionMetrics CollectionMetrics[]
+  analyticsEvent    AnalyticsEvent[]
 
   @@map("organization")
 }
@@ -125,9 +129,9 @@ model Receivable {
   id             String           @id @default(cuid())
   organizationId String
   organization   Organization     @relation(fields: [organizationId], references: [id])
-  contactId      String // Relación con el contacto
+  contactId      String
   contact        Contact          @relation(fields: [contactId], references: [id])
-  paymentId      String
+  paymentId      String? // Hacerlo opcional
   amount         Decimal
   dueDate        DateTime
   status         ReceivableStatus
@@ -139,6 +143,7 @@ model Receivable {
   metadata       Json?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  paymentPromise PaymentPromise[]
 
   @@index([paymentId])
   @@map("receivable")
@@ -152,31 +157,68 @@ enum ReceivableStatus {
 }
 
 model Campaign {
-  id             String         @id @default(cuid())
-  name           String
-  organizationId String
-  startDate      DateTime
-  endDate        DateTime
-  startTime      String
-  endTime        String
-  callsPerUser   Int
-  status         CampaignStatus @default(DRAFT)
-  context        String
-  objective      String
-  welcomeMessage String
-  voiceType      String
-  totalCalls     Int          // Total de llamadas a realizar
-  completedCalls Int          @default(0) // Llamadas realizadas
-  successfulCalls Int         @default(0) // Llamadas exitosas
-  failedCalls    Int         @default(0) // Llamadas fallidas
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  calls          Call[]
-  organization   Organization   @relation(fields: [organizationId], references: [id])
-  contacts       Contact[]      @relation("campaign_to_contact")
-  receivables    Receivable[]
+  id              String              @id @default(cuid())
+  name            String
+  organizationId  String
+  startDate       DateTime
+  endDate         DateTime
+  startTime       String
+  endTime         String
+  callsPerUser    Int
+  status          CampaignStatus      @default(DRAFT)
+  context         String
+  objective       String
+  welcomeMessage  String
+  voiceType       String
+  totalCalls      Int // Total de llamadas a realizar
+  completedCalls  Int                 @default(0) // Llamadas realizadas
+  successfulCalls Int                 @default(0) // Llamadas exitosas
+  failedCalls     Int                 @default(0) // Llamadas fallidas
+  agentId         String? // ID del agente asignado
+  agent           Agent?              @relation(fields: [agentId], references: [id])
+  automation      CampaignAutomation?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  calls           Call[]
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  contacts        Contact[]           @relation("campaign_to_contact")
+  receivables     Receivable[]
+  paymentPromise  PaymentPromise[]
+  campaignMetrics CampaignMetrics[]
 
   @@map("campaign")
+}
+
+model Agent {
+  id               String             @id @default(cuid())
+  organizationId   String
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  name             String
+  description      String?
+  elevenlabsId     String // ID del agente en ElevenLabs
+  voiceType        String
+  isActive         Boolean            @default(true)
+  campaigns        Campaign[]
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  agentPerformance AgentPerformance[]
+
+  @@map("agent")
+}
+
+model CampaignAutomation {
+  id         String   @id @default(cuid())
+  campaignId String   @unique
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  isActive   Boolean  @default(true)
+  beforeDays Int? // Días antes del vencimiento
+  onDueDate  Boolean  @default(false) // Llamar el día del vencimiento
+  afterDays  Int? // Días después del vencimiento
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("campaign_automation")
 }
 
 model Contact {
@@ -202,22 +244,19 @@ model Contact {
 }
 
 model Call {
-  id             String     @id @default(cuid())
-  campaignId     String
-  campaign       Campaign   @relation(fields: [campaignId], references: [id])
+  id             String          @id @default(cuid())
+  campaignId     String? // Opcional porque podría ser una llamada manual
+  campaign       Campaign?       @relation(fields: [campaignId], references: [id])
   receivableId   String
-  receivable     Receivable @relation(fields: [receivableId], references: [id])
+  receivable     Receivable      @relation(fields: [receivableId], references: [id])
   status         CallStatus
-  duration       Int?
-  recording      String?
-  transcript     String?
-  paymentPromise Boolean    @default(false)
-  promisedAmount Decimal?
-  promisedDate   DateTime?
-  aiResponse     Json?
-  userResponse   Json?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  duration       Int? // en segundos
+  recording      String? // URL de la grabación
+  transcript     String? // Transcripción de la llamada
+  hasPromise     Boolean         @default(false) // Cambiado de paymentPromise a hasPromise
+  promiseDetails PaymentPromise? // Relación uno a uno con los detalles de la promesa
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@map("call")
 }
@@ -352,6 +391,112 @@ model PaymentTransaction {
   @@map("payment_transaction")
 }
 
+model CampaignMetrics {
+  id              String       @id @default(cuid())
+  date            DateTime
+  campaignId      String
+  campaign        Campaign     @relation(fields: [campaignId], references: [id])
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  totalCalls      Int          @default(0)
+  answeredCalls   Int          @default(0)
+  missedCalls     Int          @default(0)
+  avgCallDuration Float        @default(0) // en segundos
+  totalPromises   Int          @default(0)
+  promisedAmount  Decimal      @default(0)
+  actualPayments  Decimal      @default(0)
+  conversionRate  Float        @default(0) // porcentaje
+  bestCallTimes   Json? // Horas con mejor tasa de respuesta
+  metadata        Json?
+
+  @@unique([date, campaignId])
+  @@map("campaign_metrics")
+}
+
+// Métricas de agentes
+model AgentPerformance {
+  id              String       @id @default(cuid())
+  date            DateTime
+  agentId         String
+  agent           Agent        @relation(fields: [agentId], references: [id])
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  totalCalls      Int          @default(0)
+  successfulCalls Int          @default(0)
+  avgCallDuration Float        @default(0)
+  totalPromises   Int          @default(0)
+  promisedAmount  Decimal      @default(0)
+  conversionRate  Float        @default(0)
+  avgResponseTime Float        @default(0)
+  metadata        Json?
+
+  @@unique([date, agentId])
+  @@map("agent_performance")
+}
+
+// Seguimiento de promesas de pago
+model PaymentPromise {
+  id              String        @id @default(cuid())
+  receivableId    String
+  receivable      Receivable    @relation(fields: [receivableId], references: [id])
+  callId          String        @unique // Hacemos único para relación uno a uno
+  call            Call          @relation(fields: [callId], references: [id])
+  campaignId      String
+  campaign        Campaign      @relation(fields: [campaignId], references: [id])
+  amount          Decimal
+  promisedDate    DateTime
+  status          PromiseStatus @default(PENDING)
+  fulfilledAmount Decimal?
+  fulfilledDate   DateTime?
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("payment_promise")
+}
+
+enum PromiseStatus {
+  PENDING
+  FULFILLED
+  PARTIALLY_FULFILLED
+  BROKEN
+}
+
+// Métricas de cobranza
+model CollectionMetrics {
+  id               String       @id @default(cuid())
+  date             DateTime
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  totalReceivables Decimal      @default(0)
+  collectedAmount  Decimal      @default(0)
+  overdueAmount    Decimal      @default(0)
+  pendingAmount    Decimal      @default(0)
+  promisedAmount   Decimal      @default(0)
+  collectionRate   Float        @default(0) // porcentaje
+  dso              Int          @default(0) // Days Sales Outstanding
+  metadata         Json?
+
+  @@unique([date, organizationId])
+  @@map("collection_metrics")
+}
+
+// Eventos importantes para análisis
+model AnalyticsEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  eventType      String // CALL_STARTED, PROMISE_MADE, PAYMENT_RECEIVED, etc.
+  entityType     String // CAMPAIGN, CALL, RECEIVABLE, etc.
+  entityId       String
+  data           Json
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, eventType])
+  @@index([entityType, entityId])
+  @@map("analytics_event")
+}
+
 enum CampaignStatus {
   DRAFT
   ACTIVE
@@ -421,3 +566,4 @@ enum TransactionStatus {
   FAILED
   REFUNDED
 }
+

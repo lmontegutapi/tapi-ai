@@ -378,17 +378,17 @@ export async function updateReceivableStatus(
 }
 
 const updateReceivableSchema = z.object({
-  amount: z.number().positive("El monto debe ser positivo"),
-  dueDate: z.string().transform(str => new Date(str)),
+  amount: z.coerce.number().positive("El monto debe ser positivo"),
+  dueDate: z.coerce.date(),
   status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PENDING_DUE"]),
   contact: z.object({
     name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-    phone: z.string().min(8, "El teléfono debe tener al menos 8 caracteres"),
-    email: z.string().email("Email inválido").optional().or(z.literal("")),
+    phone: z.string().min(8, "El teléfono debe tener al menos 8 caracteres").nullable(),
+    email: z.string().email("Email inválido").optional().nullable(),
   })
- })
+})
 
- interface ReceivableMetadata {
+interface ReceivableMetadata {
   lastUpdatedAt?: Date
   lastUpdatedBy?: string
   lastStatus?: string
@@ -399,47 +399,41 @@ const updateReceivableSchema = z.object({
   [key: string]: any // Para metadata adicional flexible
 }
 
- type UpdateReceivableInput = z.infer<typeof updateReceivableSchema>;
- 
- export async function updateReceivable(
+type UpdateReceivableInput = z.infer<typeof updateReceivableSchema>;
+
+export async function updateReceivable(
   receivableId: string, 
   data: UpdateReceivableInput
- ) {
+) {
   try {
     const session = await serverSession();
-    if (!session) {
+    if (!session?.session?.activeOrganizationId) {
       return { 
         success: false, 
         error: "No autorizado" 
       }
     }
- 
+
     const validatedData = updateReceivableSchema.parse(data)
- 
+
     // Verificar que el receivable existe y pertenece a la organización del usuario
     const receivable = await prisma.receivable.findFirst({
       where: {
         id: receivableId,
-        organization: {
-          members: {
-            some: {
-              userId: session.user.id
-            }
-          }
-        }
+        organizationId: session.session.activeOrganizationId
       },
       include: {
         contact: true
       }
     })
- 
+
     if (!receivable) {
       return {
         success: false,
         error: "Deuda no encontrada"
       }
     }
- 
+
     // Actualizar en una transacción
     const result = await prisma.$transaction(async (tx) => {
       // Actualizar información del contacto
@@ -447,16 +441,16 @@ const updateReceivableSchema = z.object({
         where: { id: receivable.contact.id },
         data: {
           name: validatedData.contact.name,
-          phone: validatedData.contact.phone,
+          phone: validatedData.contact.phone || null,
           email: validatedData.contact.email || null
         }
       })
- 
+
       // Calcular si está vencida basado en la fecha
       const isPastDue = validatedData.dueDate < new Date()
- 
+
       // Actualizar el receivable
-      const currentMetadata = (receivable.metadata || {}) as ReceivableMetadata
+      const currentMetadata = receivable.metadata as ReceivableMetadata || {}
 
       const updatedReceivable = await tx.receivable.update({
         where: { id: receivableId },
@@ -472,36 +466,25 @@ const updateReceivableSchema = z.object({
             lastUpdatedBy: session.user.id,
             lastStatus: receivable.status,
             statusChangedAt: receivable.status !== validatedData.status ? new Date() : currentMetadata.statusChangedAt
-          } as ReceivableMetadata
+          }
         },
         include: {
           contact: true
         }
       })
- 
-      // Si cambió el estado a CLOSED, actualizar campaña relacionada si existe
-      if (validatedData.status === "CLOSED" && receivable.campaignId) {
-        await tx.campaign.update({
-          where: { id: receivable.campaignId },
-          data: {
-            completedCalls: {
-              increment: 1
-            }
-          }
-        })
-      }
- 
+
       return updatedReceivable
     })
- 
+
     revalidatePath('/dashboard/receivables')
- 
+
     return {
       success: true,
       data: result
     }
- 
+
   } catch (error) {
+    console.error('Error actualizando receivable:', error)
     if (error instanceof z.ZodError) {
       return {
         success: false,
@@ -509,11 +492,10 @@ const updateReceivableSchema = z.object({
         errors: error.errors
       }
     }
- 
-    console.error('Error actualizando receivable:', error)
+
     return {
       success: false,
       error: "Error al actualizar la deuda"
     }
   }
- }
+}

@@ -79,7 +79,12 @@ export function EditReceivableDrawer({
     try {
       const result = await updateReceivable(receivable.id, {
         ...data,
-        dueDate: new Date(data.dueDate)
+        dueDate: new Date(data.dueDate),
+        contact: {
+          ...data.contact,
+          email: data.contact.email || null,
+          phone: data.contact.phone || null,
+        }
       })
 
       if (!result.success) {
@@ -94,10 +99,11 @@ export function EditReceivableDrawer({
       onSuccess?.()
       onOpenChange(false)
     } catch (error) {
+      console.error("Error al actualizar:", error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudieron guardar los cambios"
+        description: error instanceof Error ? error.message : "No se pudieron guardar los cambios"
       })
     }
   }

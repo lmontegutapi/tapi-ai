@@ -5,7 +5,6 @@ import { organization, admin } from "better-auth/plugins"
 import { organizationClient } from "better-auth/client/plugins"
 import { nextCookies } from "better-auth/next-js";
 import { openAPI } from "better-auth/plugins"
-import { headers } from "next/headers"
 
 const prisma = new PrismaClient();
 

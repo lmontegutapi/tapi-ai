@@ -170,6 +170,7 @@ model Campaign {
   objective       String
   welcomeMessage  String
   voiceType       String
+  metadata        Json?
   totalCalls      Int // Total de llamadas a realizar
   completedCalls  Int                 @default(0) // Llamadas realizadas
   successfulCalls Int                 @default(0) // Llamadas exitosas
@@ -197,6 +198,16 @@ model Agent {
   description      String?
   elevenlabsId     String // ID del agente en ElevenLabs
   voiceType        String
+  voiceId          String // ID de la voz en ElevenLabs
+  voiceName        String // Nombre de la voz en ElevenLabs
+  voiceLanguage    String // Idioma de la voz en ElevenLabs
+  voiceGender      String // Género de la voz en ElevenLabs
+  voiceAge         String // Edad de la voz en ElevenLabs
+  voiceStyle       String // Estilo de la voz en ElevenLabs
+  voicePitch       String // Tono de la voz en ElevenLabs
+  voiceSpeed       String // Velocidad de la voz en ElevenLabs
+  voiceStability   String // Estabilidad de la voz en ElevenLabs
+  voiceSimilarity  String // Similitud de la voz en ElevenLabs
   isActive         Boolean            @default(true)
   campaigns        Campaign[]
   metadata         Json?
@@ -255,6 +266,7 @@ model Call {
   transcript     String? // Transcripción de la llamada
   hasPromise     Boolean         @default(false) // Cambiado de paymentPromise a hasPromise
   promiseDetails PaymentPromise? // Relación uno a uno con los detalles de la promesa
+  metadata       Json?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 

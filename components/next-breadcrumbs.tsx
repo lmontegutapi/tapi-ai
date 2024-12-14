@@ -22,21 +22,23 @@ const NextBreadcrumb = ({ homeElement, capitalizeLinks }: TBreadCrumbProps) => {
   const paths = usePathname();
   const pathNames = paths.split("/").filter((path) => path);
 
+  const isAdmin = pathNames[0] === "admin";
+
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {paths === "/dashboard" ? (
+        {paths === "/dashboard" || paths === "/admin" ? (
           <BreadcrumbItem>
             <BreadcrumbPage>{homeElement}</BreadcrumbPage>
           </BreadcrumbItem>
         ) : (
           <BreadcrumbItem>
-            <Link href="/dashboard">{homeElement}</Link>
+            <Link href={isAdmin ? "/admin" : "/dashboard"}>{homeElement}</Link>
           </BreadcrumbItem>
         )}
 
         {pathNames.map((link, index) => {
-          if (link === "dashboard") return null;
+          if (link === "dashboard" || (isAdmin && index === 0)) return null;
           
           const href = `/${pathNames.slice(0, index + 1).join("/")}`;
           const itemLink = capitalizeLinks

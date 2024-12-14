@@ -21,7 +21,7 @@ async function getDashboardData() {
     ],
     collectionTrend: Array.from({ length: 7 }, (_, i) => ({
       date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      amount: Math.floor(Math.random() * 50000) + 10000
+      amountCents: Math.floor(Math.random() * 50000) + 10000
     })).reverse(),
     callsMetrics: {
       total: 250,

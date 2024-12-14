@@ -9,11 +9,11 @@ import { session as serverSession } from "@/lib/auth-server";
 
 interface ParsedReceivable {
   identifier?: string;
-  amount: number;
+  amountCents: number;
   dueDate: Date;
   contactName: string;
-  contactPhone?: string;
-  contactEmail?: string;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
   metadata?: any;
 }
 
@@ -29,13 +29,12 @@ export async function uploadReceivables(formData: FormData) {
 
     const result = await response.json();
 
-    console.log("result from action", result);
 
     const data = await auth.api.getSession({
       headers: headers(),
     });
 
-    console.log("data from action", data);
+
 
     if (!data?.session.activeOrganizationId) {
       return {
@@ -44,15 +43,13 @@ export async function uploadReceivables(formData: FormData) {
       };
     }
 
-    console.log("Pase por aqui");
+
 
     // Crear los receivables usando los datos procesados
     const createdReceivables = await createReceivables(
-      data?.session.activeOrganizationId,
       result.data
     );
 
-    console.log("createdReceivables", createdReceivables);
 
     revalidatePath("/dashboard/receivables");
     return createdReceivables;
@@ -80,9 +77,7 @@ export async function createReceivables(
         error: "No autorizado",
       };
     }
-
-    console.log("receivables", receivables);
-
+    
     const organizationId = session.session.activeOrganizationId;
 
     // Crear los receivables en una transacción
@@ -118,7 +113,8 @@ export async function createReceivables(
             organizationId: organizationId || "",
             contactId: contact.id,
             paymentId: receivable.identifier || `PAY-${Date.now()}`,
-            amount: receivable.amount,
+            amountCents: receivable.amountCents,
+            currency: "MXN",
             dueDate: receivable.dueDate,
             status: "OPEN",
             isPastDue: new Date() > new Date(receivable.dueDate),
@@ -171,7 +167,7 @@ export async function getReceivables() {
 }
 
 const paymentSchema = z.object({
-  amount: z.number().positive(),
+  amountCents: z.number().positive(),
   paymentDate: z.date(),
   paymentMethod: z.enum([
     "CASH",
@@ -255,7 +251,7 @@ export async function registerPayment(
       const paymentTransaction = await tx.paymentTransaction.create({
         data: {
           paymentLinkId: paymentId, // Usamos el paymentId como linkId
-          amount: validatedData.amount,
+          amountCents: validatedData.amountCents,
           status: "COMPLETED",
           paymentMethod: validatedData.paymentMethod,
           paymentReference: paymentId,
@@ -378,7 +374,7 @@ export async function updateReceivableStatus(
 }
 
 const updateReceivableSchema = z.object({
-  amount: z.coerce.number().positive("El monto debe ser positivo"),
+  amountCents: z.coerce.number().positive("El monto debe ser positivo"),
   dueDate: z.coerce.date(),
   status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PENDING_DUE"]),
   contact: z.object({
@@ -455,7 +451,7 @@ export async function updateReceivable(
       const updatedReceivable = await tx.receivable.update({
         where: { id: receivableId },
         data: {
-          amount: validatedData.amount,
+          amountCents: validatedData.amountCents,
           dueDate: validatedData.dueDate,
           status: validatedData.status,
           isPastDue,

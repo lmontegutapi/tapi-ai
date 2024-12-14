@@ -1,46 +1,82 @@
-import { 
+import {
   Body,
+  Button,
   Container,
+  Column,
   Head,
   Heading,
+  Hr,
   Html,
+  Img,
+  Link,
   Preview,
-  Text,
-  Button,
-  Tailwind,
+  Row,
   Section,
-  Link
-} from '@react-email/components';
+  Text,
+  Tailwind,
+} from "@react-email/components";
+import * as React from "react";
 
 interface InvitationEmailProps {
-  inviterName: string;
-  organizationName: string;
-  inviteLink: string;
+  username?: string;
+  invitedByUsername?: string;
+  invitedByEmail?: string;
+  teamName?: string;
+  teamImage?: string;
+  inviteLink?: string;
 }
 
-const InvitationEmailTemplate = ({
-  inviterName,
-  organizationName,
+export const InvitationEmail = ({
+  username,
+  invitedByUsername,
+  invitedByEmail,
+  teamName,
+  teamImage,
   inviteLink,
 }: InvitationEmailProps) => {
+  const previewText = `${invitedByUsername} te ha invitado a unirte a ${teamName}`;
+
   return (
     <Html>
       <Head />
-      <Preview>Te han invitado a unirte a {organizationName}</Preview>
+      <Preview>{previewText}</Preview>
       <Tailwind>
-        <Body className="bg-white my-auto mx-auto font-sans">
-          <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] w-[465px]">
+        <Body className="bg-white my-auto mx-auto font-sans px-2">
+          <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] max-w-[465px]">
             <Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
-              Invitación para unirte a <strong>{organizationName}</strong>
+              Únete a <strong>{teamName}</strong>
             </Heading>
             
             <Text className="text-black text-[14px] leading-[24px]">
-              Hola 👋
+              Hola {username},
             </Text>
             
             <Text className="text-black text-[14px] leading-[24px]">
-              <strong>{inviterName}</strong> te ha invitado a unirte a <strong>{organizationName}</strong> en la plataforma de Cobranzas AI.
+              <strong>{invitedByUsername}</strong> (
+              <Link
+                href={`mailto:${invitedByEmail}`}
+                className="text-blue-600 no-underline"
+              >
+                {invitedByEmail}
+              </Link>
+              ) te ha invitado a unirte al equipo <strong>{teamName}</strong> en la plataforma de Cobranzas AI.
             </Text>
+
+            <Section>
+              {teamImage && (
+                <Row>
+                  <Column align="left">
+                    <Img
+                      className="rounded-full"
+                      src={teamImage}
+                      width="64"
+                      height="64"
+                      fetchPriority="high"
+                    />
+                  </Column>
+                </Row>
+              )}
+            </Section>
 
             <Section className="text-center mt-[32px] mb-[32px]">
               <Button
@@ -52,16 +88,18 @@ const InvitationEmailTemplate = ({
             </Section>
 
             <Text className="text-black text-[14px] leading-[24px]">
-              O copia y pega este link en tu navegador:
-              <br />
-              <Link href={inviteLink} className="text-blue-600 break-all">
+              O copia y pega este link en tu navegador:{" "}
+              <Link href={inviteLink} className="text-blue-600 no-underline break-all">
                 {inviteLink}
               </Link>
             </Text>
 
-            <Text className="text-gray-500 text-[12px] leading-[24px] mt-[32px]">
-              Si no esperabas esta invitación, puedes ignorar este email.
-              Este link de invitación expirará en 7 días.
+            <Hr className="border border-solid border-[#eaeaea] my-[26px] mx-0 w-full" />
+            
+            <Text className="text-[#666666] text-[12px] leading-[24px]">
+              Esta invitación fue enviada a{" "}
+              <span className="text-black">{username}</span>. Si no esperabas esta invitación, puedes ignorar este email.
+              El link de invitación expirará en 7 días.
             </Text>
           </Container>
         </Body>
@@ -70,4 +108,8 @@ const InvitationEmailTemplate = ({
   );
 };
 
-export default InvitationEmailTemplate;
+export function reactInvitationEmail(props: InvitationEmailProps) {
+  return <InvitationEmail {...props} />;
+}
+
+export default InvitationEmail;

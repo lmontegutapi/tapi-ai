@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx';
 // Define el esquema de la estructura objetivo
 const debtSchema = z.object({
   identifier: z.string().optional(),
-  amount: z.number(),
+  amountCents: z.number(),
   dueDate: z.string().datetime(),
   contactName: z.string(),
   contactPhone: z.string().optional(),
@@ -82,7 +82,6 @@ export async function POST(req: Request) {
       ${JSON.stringify(jsonData)}`,
     });
 
-    console.log("mappedData from api", mappedData)
 
     return NextResponse.json({ success: true, data: mappedData.receivables });
   } catch (error) {

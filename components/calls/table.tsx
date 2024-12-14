@@ -67,15 +67,15 @@ const columns: ColumnDef<Call>[] = [
     },
   },
   {
-    accessorKey: "promisedAmount",
+    accessorKey: "promisedAmountCents",
     header: "Monto Prometido",
     cell: ({ row }) => {
-      const amount = row.getValue("promisedAmount") as number
-      return amount ? (
+      const amountCents = row.getValue("promisedAmountCents") as number
+      return amountCents ? (
         <span className="font-mono">
-          {amount.toLocaleString("es-AR", {
+          {amountCents.toLocaleString("es-AR", {
             style: "currency",
-            currency: "ARS",
+            currency: "MXN",
           })}
         </span>
       ) : (

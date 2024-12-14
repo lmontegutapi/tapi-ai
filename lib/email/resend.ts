@@ -2,9 +2,9 @@ import { Resend } from 'resend';
 import WelcomeEmailTemplate from './welcome-email';
 import InvitationEmailTemplate from './invitation-email';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+export const resend = new Resend(process.env.RESEND_API_KEY);
 
-export const sendWelcomeEmail = async (to: string, name: string, organizationName: string) => {
+/* export const sendWelcomeEmail = async (to: string, name: string, organizationName: string) => {
   try {
     const data = await resend.emails.send({
       from: 'TapFlow AI <no-reply@tudominio.com>',
@@ -39,4 +39,4 @@ export const sendInvitationEmail = async (to: string, inviterName: string, organ
   } catch (error) {
     return { success: false, error };
   }
-};
+}; */

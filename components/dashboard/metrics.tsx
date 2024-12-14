@@ -32,7 +32,7 @@ interface DashboardMetricsProps {
   }[]
   collectionTrend: {
     date: string
-    amount: number
+    amountCents: number
   }[]
   callsMetrics: {
     total: number
@@ -147,7 +147,7 @@ export function DashboardMetrics({
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Line
                   type="monotone"
-                  dataKey="amount"
+                  dataKey="amountCents"
                   name="collected"
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}

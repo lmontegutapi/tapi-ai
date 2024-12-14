@@ -25,6 +25,7 @@ export const columns: ColumnDef<Campaign>[] = [
         checked={table.getIsAllPageRowsSelected()}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Seleccionar todo"
+        className="rounded-xs"
       />
     ),
     cell: ({ row }) => (
@@ -32,6 +33,7 @@ export const columns: ColumnDef<Campaign>[] = [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Seleccionar fila"
+        className="rounded-xs"
       />
     ),
     enableSorting: false,

@@ -24,7 +24,7 @@ export async function getAgents() {
   if (!session) {
     throw new Error("No autorizado")
   }
-  console.log("SESSION", session)
+  
   const organization = await prisma.organization.findFirst({
     where: {
       members: {
@@ -34,8 +34,6 @@ export async function getAgents() {
       }
     }
   })
-
-  console.log("ORGANIZATION", organization)
 
   return await prisma.agent?.findMany({
     where: {

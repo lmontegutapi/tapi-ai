@@ -5,11 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency: string = "MXN") {
+export function formatCurrency(amountCents: number, currency: string = "MXN") {
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: currency,
-  }).format(amount)
+  }).format(amountCents / 100)
+}
+
+async function convertImageToBase64(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onloadend = () => resolve(reader.result as string);
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
 }
 
 export function formatDate(date: Date) {
@@ -22,7 +31,7 @@ export const generateReceivablesTemplate = () => {
     'name',
     'phone',
     'email',
-    'amount',
+    'amountCents',
     'dueDate',
     'notes'
   ]
@@ -33,7 +42,7 @@ export const generateReceivablesTemplate = () => {
       name: 'Juan Pérez',
       phone: '1123456789',
       email: 'juan@ejemplo.com',
-      amount: '1000.00',
+      amountCents: '100000',
       dueDate: '2024-12-31',
       notes: 'Factura #A-001'
     },
@@ -42,7 +51,7 @@ export const generateReceivablesTemplate = () => {
       name: 'María García',
       phone: '1187654321',
       email: 'maria@ejemplo.com',
-      amount: '2500.50',
+      amountCents: '250050',
       dueDate: '2024-12-31',
       notes: 'Factura #A-002'
     }

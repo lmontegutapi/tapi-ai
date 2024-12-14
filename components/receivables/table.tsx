@@ -16,7 +16,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Phone, Plus } from "lucide-react";
+import { Phone, Plus, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,9 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { columns } from "./columns";
 import { ReceivableWithContact } from "@/types/receivables";
-
+import { Separator } from "@/components/ui/separator";
+import { useReceivablesStore } from "@/stores/receivables.store";
+import { NewReceivableDrawer } from "@/components/receivables/new-receivable-drawer";
 interface ReceivablesTableProps {
   data: ReceivableWithContact[];
 }
@@ -45,6 +47,8 @@ export function ReceivablesTable({ data }: ReceivablesTableProps) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+
+  const { openNewReceivableDrawer, setOpenNewReceivableDrawer } = useReceivablesStore((state) => state)
 
   const table = useReactTable({
     data,
@@ -113,17 +117,18 @@ export function ReceivablesTable({ data }: ReceivablesTableProps) {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
             disabled={table.getFilteredSelectedRowModel().rows.length === 0}
             onClick={handleBulkCall}
           >
-            <Phone className="mr-2 h-4 w-4" />
+            <Phone className="mr-1 h-4 w-4" />
             Llamar seleccionados
           </Button>
+          <Separator className="h-6" orientation="vertical" />
+          <NewReceivableDrawer />
           <Button asChild>
             <Link href="/dashboard/receivables/upload">
-              <Plus className="mr-2 h-4 w-4" />
-              Cargar deudas
+              <Upload className="mr-1 h-4 w-4" />
+              Subir csv
             </Link>
           </Button>
         </div>

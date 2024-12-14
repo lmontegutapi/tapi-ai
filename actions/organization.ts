@@ -81,8 +81,6 @@ export async function createOrganization({
 export async function getOrganization(slug: string) {
   const data = await session()
 
-  console.log("data form getOrganization", data)
-
   if(!data) {
     return {
       success: false,
@@ -98,8 +96,6 @@ export async function getOrganization(slug: string) {
     },
     headers: headers()
   })
-
-  console.log("organization from getOrganization", organization)
 
   if(!organization) {
     return {
@@ -139,3 +135,81 @@ export async function setActiveOrganization(organizationId: string): Promise<any
 
   return organization
 } */
+
+interface CreateOrganizationWithOwnerProps {
+  name: string;
+  slug: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPassword: string;
+}
+
+export async function createOrganizationWithOwner({
+  name,
+  slug,
+  ownerName,
+  ownerEmail,
+  ownerPassword,
+}: CreateOrganizationWithOwnerProps) {
+  try {
+    // 1. Crear el usuario owner
+    const owner = await auth.api.createUser({
+      body: {
+        name: ownerName,
+        email: ownerEmail,
+        password: ownerPassword,
+        role: 'OWNER',
+      },
+      headers: headers()
+    })
+
+    if (!owner) {
+      return {
+        success: false,
+        error: 'Error al crear el usuario administrador'
+      }
+    }
+
+
+    const org = await auth.api.createOrganization({
+      body: {
+        name,
+        slug,
+        userId: owner.user.id,
+        role: 'OWNER'
+      },
+      headers: headers()
+    })
+
+    if (!org && owner) {
+      // Rollback: eliminar usuario si falla la creación de la organización
+      await auth.api.deleteUser()
+      return org
+    }
+
+    // 3. Enviar invitación por email
+/*     await auth.api.inviteUser({
+      body: {
+        email: ownerEmail,
+        organizationId: organization.data.id,
+        role: 'OWNER'
+      },
+      headers: headers()
+    }) */
+
+    return {
+      success: true,
+      data: {
+        organization: org,
+        owner
+      }
+    }
+
+  } catch (error) {
+    console.error('Error en createOrganizationWithOwner:', error)
+    return {
+      success: false,
+      error: 'Error al crear la organización y el usuario. Por favor intenta nuevamente.'
+    }
+  }
+}

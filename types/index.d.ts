@@ -75,12 +75,6 @@ export type TransactionStatus = {
   REFUNDED: "REFUNDED"
 }
 
-export type OrganizationRole = {
-  OWNER: "owner"
-  ADMIN: "admin"
-  MEMBER: "member"
-}
-
 export type OrganizationStatus = {
   ACTIVE: "active"
   INACTIVE: "inactive"

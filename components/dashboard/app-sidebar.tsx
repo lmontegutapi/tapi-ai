@@ -34,6 +34,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { UserRole } from "@/lib/constants/roles";
+import Link from "next/link";
 
 const data = {
   user: {
@@ -47,119 +49,27 @@ const data = {
       url: "/dashboard",
       icon: LayoutDashboard,
       isActive: true,
-      /* items: [
-        {
-          title: "General",
-          url: "/dashboard",
-        },
-        {
-          title: "Analytics",
-          url: "/dashboard/analytics",
-        }
-      ], */
-    },
-    {
-      title: "Cobranzas",
-      url: "/dashboard/receivables",
-      icon: DollarSign,
-      items: [
-        {
-          title: "Deudas",
-          url: "/dashboard/receivables",
-        },
-        {
-          title: "Subir Archivo",
-          url: "/dashboard/receivables/upload",
-        },
-/*         {
-          title: "Historial",
-          url: "/dashboard/receivables/history",
-        } */
-      ],
     },
     {
       title: "Campañas",
       url: "/dashboard/campaigns",
       icon: Phone,
-      /* items: [
-        {
-          title: "Activas",
-          url: "/dashboard/campaigns",
-        },
-        {
-          title: "Nueva Campaña",
-          url: "/dashboard/campaigns/new",
-        },
-        {
-          title: "Resultados",
-          url: "/dashboard/campaigns/results",
-        }
-      ], */
+      isActive: true,
+      allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
     },
     {
-      title: "Agentes AI",
-      url: "/dashboard/agents",
-      icon: Bot,
-      /* items: [
-        {
-          title: "Mis Agentes",
-          url: "/dashboard/ai-agents",
-        },
-        {
-          title: "Crear Agente",
-          url: "/dashboard/ai-agents/new",
-        },
-        {
-          title: "Scripts",
-          url: "/dashboard/ai-agents/scripts",
-        }
-      ], */
+      title: "Deudas",
+      url: "/dashboard/receivables",
+      icon: DollarSign,
+      isActive: true,
+      allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.AGENT],
     },
-    /* {
-      title: "Reportes",
-      url: "/dashboard/reports",
-      icon: BarChart,
-      items: [
-        {
-          title: "Resumen",
-          url: "/dashboard/reports",
-        },
-        {
-          title: "Campañas",
-          url: "/dashboard/reports/campaigns",
-        },
-        {
-          title: "Cobranzas",
-          url: "/dashboard/reports/collection",
-        },
-        {
-          title: "Rendimiento",
-          url: "/dashboard/reports/performance",
-        }
-      ],
-    }, */
     {
       title: "Configuración",
       url: "/dashboard/settings",
       icon: Settings,
-      /* items: [
-        {
-          title: "General",
-          url: "/dashboard/settings",
-        },
-        {
-          title: "Organización",
-          url: "/dashboard/settings/organization",
-        },
-        {
-          title: "Equipo",
-          url: "/dashboard/settings/team",
-        },
-        {
-          title: "Integraciones",
-          url: "/dashboard/settings/integrations",
-        }
-      ], */
+      allowedRoles: [UserRole.OWNER, UserRole.ADMIN],
+      isActive: true,
     },
   ],
   /* navSecondary: [
@@ -188,14 +98,14 @@ const data = {
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {  
   return (
     <Sidebar variant="inset" {...props} className="bg-muted/50">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="#">
+              <Link href="/">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <svg
                     width="200"
@@ -236,13 +146,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </h3>
                   <span className="truncate text-xs">AI-powered</span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain 
+          items={data.navMain}
+        />
         {/* <NavProjects projects={data.projects} /> */}
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>

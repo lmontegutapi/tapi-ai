@@ -7,29 +7,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  SUPER_ADMIN    // Puede gestionar todo el sistema (solo se crea desde DB)
+  OWNER          // Dueño de una organización (reemplaza al ADMIN anterior)
+  ADMIN          // Administrador de una organización
+  MANAGER        // Puede gestionar campañas y deudas
+  AGENT          // Solo puede hacer llamadas y gestionar deudas
+}
+
 model User {
-  id              String            @id
+  id              String            @id @default(cuid())
   name            String
   email           String            @unique
   emailVerified   Boolean
   image           String?
   createdAt       DateTime
   updatedAt       DateTime
-  role            String?
+  role            UserRole    @default(OWNER)
   banned          Boolean?
   banReason       String?
   banExpires      DateTime?
   accounts        Account[]
-  EmailPreference EmailPreference[]
+  emailPreference EmailPreference[]
   invitations     Invitation[]
   members         Member[]
   sessions        Session[]
+  activity        Activity[]
 
   @@map("user")
 }
 
 model Session {
-  id                   String   @id
+  id                   String   @id @default(cuid())
   expiresAt            DateTime
   token                String   @unique
   createdAt            DateTime
@@ -45,7 +54,7 @@ model Session {
 }
 
 model Account {
-  id                    String    @id
+  id                    String    @id @default(cuid())
   accountId             String
   providerId            String
   userId                String
@@ -64,7 +73,7 @@ model Account {
 }
 
 model Verification {
-  id         String    @id
+  id         String    @id @default(cuid())
   identifier String
   value      String
   expiresAt  DateTime
@@ -75,7 +84,7 @@ model Verification {
 }
 
 model Organization {
-  id                String              @id
+  id                String              @id @default(cuid())
   name              String
   slug              String?             @unique
   logo              String?
@@ -95,12 +104,13 @@ model Organization {
   campaignMetrics   CampaignMetrics[]
   collectionMetrics CollectionMetrics[]
   analyticsEvent    AnalyticsEvent[]
+  activity Activity[]
 
   @@map("organization")
 }
 
 model Member {
-  id             String       @id
+  id             String       @id @default(cuid())
   organizationId String
   userId         String
   role           String
@@ -112,7 +122,7 @@ model Member {
 }
 
 model Invitation {
-  id             String       @id
+  id             String       @id @default(cuid())
   organizationId String
   email          String
   role           String?
@@ -132,7 +142,9 @@ model Receivable {
   contactId      String
   contact        Contact          @relation(fields: [contactId], references: [id])
   paymentId      String? // Hacerlo opcional
-  amount         Decimal
+  amountCents    Int
+  currency       String?          @default("MXN")
+  notes          String?
   dueDate        DateTime
   status         ReceivableStatus
   isPastDue      Boolean          @default(false)
@@ -144,6 +156,7 @@ model Receivable {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   paymentPromise PaymentPromise[]
+  activity       Activity[]
 
   @@index([paymentId])
   @@map("receivable")
@@ -274,7 +287,7 @@ model Call {
 }
 
 model Rate_limit {
-  id          String  @id
+  id          String  @id @default(cuid())
   key         String?
   count       Int?
   lastRequest Int?
@@ -317,7 +330,8 @@ model Invoice {
   invoiceNumber  String
   organizationId String
   clientId       String
-  amount         Decimal
+  amountCents    Int
+  currency       String?          @default("MXN")
   dueDate        DateTime
   emissionDate   DateTime
   status         InvoiceStatus
@@ -340,8 +354,8 @@ model InvoiceItem {
   invoiceId   String
   description String
   quantity    Int
-  unitPrice   Decimal
-  total       Decimal
+  unitPrice   Int
+  total       Int
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -355,7 +369,8 @@ model PaymentLink {
   publicId            String               @unique
   organizationId      String
   invoiceId           String?
-  amount              Decimal
+  amountCents         Int
+  currency            String?      @default("MXN")
   status              PaymentLinkStatus
   expiresAt           DateTime?
   metadata            Json?
@@ -391,7 +406,8 @@ model PaymentMethod {
 model PaymentTransaction {
   id               String            @id @default(cuid())
   paymentLinkId    String
-  amount           Decimal
+  amountCents      Int
+  currency         String?           @default("MXN")
   status           TransactionStatus
   paymentMethod    PaymentType
   paymentReference String?
@@ -415,8 +431,8 @@ model CampaignMetrics {
   missedCalls     Int          @default(0)
   avgCallDuration Float        @default(0) // en segundos
   totalPromises   Int          @default(0)
-  promisedAmount  Decimal      @default(0)
-  actualPayments  Decimal      @default(0)
+  promisedAmountCents  Int          @default(0)
+  actualPaymentsCents  Int          @default(0)
   conversionRate  Float        @default(0) // porcentaje
   bestCallTimes   Json? // Horas con mejor tasa de respuesta
   metadata        Json?
@@ -437,7 +453,7 @@ model AgentPerformance {
   successfulCalls Int          @default(0)
   avgCallDuration Float        @default(0)
   totalPromises   Int          @default(0)
-  promisedAmount  Decimal      @default(0)
+  promisedAmountCents  Int          @default(0)
   conversionRate  Float        @default(0)
   avgResponseTime Float        @default(0)
   metadata        Json?
@@ -455,10 +471,11 @@ model PaymentPromise {
   call            Call          @relation(fields: [callId], references: [id])
   campaignId      String
   campaign        Campaign      @relation(fields: [campaignId], references: [id])
-  amount          Decimal
+  amountCents     Int
+  currency        String?         @default("MXN")
   promisedDate    DateTime
   status          PromiseStatus @default(PENDING)
-  fulfilledAmount Decimal?
+  fulfilledAmountCents Int?
   fulfilledDate   DateTime?
   metadata        Json?
   createdAt       DateTime      @default(now())
@@ -480,11 +497,11 @@ model CollectionMetrics {
   date             DateTime
   organizationId   String
   organization     Organization @relation(fields: [organizationId], references: [id])
-  totalReceivables Decimal      @default(0)
-  collectedAmount  Decimal      @default(0)
-  overdueAmount    Decimal      @default(0)
-  pendingAmount    Decimal      @default(0)
-  promisedAmount   Decimal      @default(0)
+  totalReceivables Int          @default(0)
+  collectedAmountCents  Int          @default(0)
+  overdueAmountCents    Int          @default(0)
+  pendingAmountCents    Int          @default(0)
+  promisedAmountCents   Int          @default(0)
   collectionRate   Float        @default(0) // porcentaje
   dso              Int          @default(0) // Days Sales Outstanding
   metadata         Json?
@@ -507,6 +524,22 @@ model AnalyticsEvent {
   @@index([organizationId, eventType])
   @@index([entityType, entityId])
   @@map("analytics_event")
+}
+
+model Activity {
+  id            String      @id @default(cuid())
+  action        String
+  createdAt     DateTime    @default(now())
+  organizationId String
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  receivableId  String?
+  receivable    Receivable? @relation(fields: [receivableId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([receivableId])
 }
 
 enum CampaignStatus {
@@ -578,4 +611,6 @@ enum TransactionStatus {
   FAILED
   REFUNDED
 }
+
+
 

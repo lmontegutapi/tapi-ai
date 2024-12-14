@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -32,42 +31,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { createReceivables } from "@/actions/receivables";
-import { Contact } from "@prisma/client";
+import { useReceivablesStore } from "@/stores/receivables.store";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useEffect } from "react";
 
 const receivableSchema = z.object({
-  contactId: z.string().min(1, "Debes seleccionar un contacto"),
-  amount: z.coerce.number().positive("El monto debe ser positivo"),
+  amountCents: z.coerce.number().positive("El monto debe ser positivo"),
   dueDate: z.string().transform((str) => new Date(str)),
   status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PENDING_DUE"]),
-  // Campos opcionales para crear un nuevo contacto si no existe
-  newContact: z
-    .object({
-      name: z.string().optional(),
-      phone: z.string().optional(),
-      email: z.string().email("Email inválido").optional(),
-    })
-    .optional(),
+  notes: z.string().optional(),
+  contact: z.object({
+    name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+    phone: z.string().min(8, "El teléfono debe tener al menos 8 caracteres"),
+    email: z.string().email("Email inválido").optional().or(z.literal("")),
+  }),
 });
 
-interface NewReceivableDrawerProps {
-  contacts: Contact[];
-}
-
-export function NewReceivableDrawer({ contacts }: NewReceivableDrawerProps) {
-  const [open, setOpen] = useState(false);
-  const [isNewContact, setIsNewContact] = useState(false);
+export function NewReceivableDrawer() {
+  const { openNewReceivableDrawer, setOpenNewReceivableDrawer } =
+    useReceivablesStore((state) => state);
   const router = useRouter();
-  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof receivableSchema>>({
     resolver: zodResolver(receivableSchema),
     defaultValues: {
-      amount: 0,
+      amountCents: 0,
       status: "OPEN",
       dueDate: new Date(),
-      newContact: {
+      notes: "",
+      contact: {
         name: "",
         phone: "",
         email: "",
@@ -78,10 +72,14 @@ export function NewReceivableDrawer({ contacts }: NewReceivableDrawerProps) {
   async function onSubmit(data: z.infer<typeof receivableSchema>) {
     try {
       const receivableData = {
-        ...data,
-        contactName: data.newContact?.name || contacts.find(c => c.id === data.contactId)?.name || ''
+        amountCents: data.amountCents,
+        dueDate: data.dueDate,
+        status: data.status,
+        contactName: data.contact.name,
+        contactPhone: data.contact.phone,
+        contactEmail: data.contact.email || null,
       };
-      
+
       const result = await createReceivables([receivableData]);
 
       if (!result.success) {
@@ -93,22 +91,35 @@ export function NewReceivableDrawer({ contacts }: NewReceivableDrawerProps) {
         description: "La deuda se ha registrado correctamente",
       });
 
-      setOpen(false);
+      setOpenNewReceivableDrawer(false);
       form.reset();
       router.refresh();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo crear la deuda",
+        description:
+          error instanceof Error ? error.message : "No se pudo crear la deuda",
       });
     }
   }
 
+  const clearErrorsWhenOpen = () => {
+    form.clearErrors();
+    form.reset();
+  };
+
+  useEffect(() => {
+    clearErrorsWhenOpen();
+  }, [openNewReceivableDrawer]);
+
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet
+      open={openNewReceivableDrawer}
+      onOpenChange={setOpenNewReceivableDrawer}
+    >
       <SheetTrigger asChild>
-        <Button>
+        <Button variant="outline">
           <Plus className="mr-2 h-4 w-4" />
           Nueva Deuda
         </Button>
@@ -126,28 +137,17 @@ export function NewReceivableDrawer({ contacts }: NewReceivableDrawerProps) {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 pt-4"
           >
-            <div className="flex items-center justify-between">
-              <div className="text-sm">Contacto existente</div>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setIsNewContact(!isNewContact)}
-              >
-                {isNewContact ? "Seleccionar existente" : "Crear nuevo"}
-              </Button>
-            </div>
-
-            {isNewContact ? (
-              // Formulario para nuevo contacto
+            <ScrollArea className="max-h-max">
               <div className="space-y-4">
+                <h4 className="text-sm font-medium">Información de contacto</h4>
                 <FormField
                   control={form.control}
-                  name="newContact.name"
+                  name="contact.name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre del contacto</FormLabel>
+                      <FormLabel>Nombre completo</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Nombre completo" />
+                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -156,15 +156,59 @@ export function NewReceivableDrawer({ contacts }: NewReceivableDrawerProps) {
 
                 <FormField
                   control={form.control}
-                  name="newContact.phone"
+                  name="contact.phone"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Teléfono</FormLabel>
                       <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contact.email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <FormField
+                  control={form.control}
+                  name="amountCents"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monto</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha de vencimiento</FormLabel>
+                      <FormControl>
                         <Input
                           {...field}
-                          type="tel"
-                          placeholder="+54 11 1234-5678"
+                          type="date"
+                          value={field.value.toString()}
                         />
                       </FormControl>
                       <FormMessage />
@@ -174,15 +218,43 @@ export function NewReceivableDrawer({ contacts }: NewReceivableDrawerProps) {
 
                 <FormField
                   control={form.control}
-                  name="newContact.email"
+                  name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Estado</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar estado" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="OPEN">Abierta</SelectItem>
+                          <SelectItem value="PENDING_DUE">
+                            Por vencer
+                          </SelectItem>
+                          <SelectItem value="OVERDUE">Vencida</SelectItem>
+                          <SelectItem value="CLOSED">Cerrada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Concepto de pago</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
-                          type="email"
-                          placeholder="email@ejemplo.com"
+                          placeholder="Ej: Deuda pago de colegio"
                         />
                       </FormControl>
                       <FormMessage />
@@ -190,106 +262,24 @@ export function NewReceivableDrawer({ contacts }: NewReceivableDrawerProps) {
                   )}
                 />
               </div>
-            ) : (
-              // Selector de contacto existente
-              <FormField
-                control={form.control}
-                name="contactId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contacto</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar contacto" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {contacts.map((contact) => (
-                          <SelectItem key={contact.id} value={contact.id}>
-                            <div className="flex flex-col">
-                              <span>{contact.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {contact.phone || contact.email}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            </ScrollArea>
 
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.01" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dueDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fecha de vencimiento</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="date" value={field.value.toISOString().split('T')[0]} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Estado</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar estado" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="OPEN">Abierta</SelectItem>
-                      <SelectItem value="PENDING_DUE">Por vencer</SelectItem>
-                      <SelectItem value="OVERDUE">Vencida</SelectItem>
-                      <SelectItem value="CLOSED">Cerrada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-3 pt-4 flex-col">
               <Button
                 variant="outline"
-                onClick={() => setOpen(false)}
+                className="w-full"
+                onClick={() =>
+                  setOpenNewReceivableDrawer(!openNewReceivableDrawer)
+                }
                 disabled={form.formState.isSubmitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="w-full"
+              >
                 {form.formState.isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

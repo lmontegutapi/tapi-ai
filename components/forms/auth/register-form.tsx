@@ -25,12 +25,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { createOrganization, getOrganization } from "@/actions/organization";
 import { generateSlug } from "@/lib/utils";
+import { UserRole } from "@/lib/constants/roles";
 
-enum OrganizationRole {
-  OWNER = "owner",
-  ADMIN = "admin",
-  MEMBER = "member"
-}
 
 export function RegisterForm() {
   const router = useRouter();
@@ -64,7 +60,7 @@ export function RegisterForm() {
           const organizationName =
             data.organizationName || `${data.name}'s Organization`;
           const baseSlug = generateSlug(organizationName);
-          console.log("baseSlug", baseSlug)
+          
           // Verificar si el slug ya existe y agregar sufijo si es necesario
           let slug = baseSlug;
           //TODO: Agregar validacion de slug para que no se repita
@@ -85,21 +81,17 @@ export function RegisterForm() {
             name: organizationName,
             slug,
             userId: ctx.data.id,
-            role: OrganizationRole.OWNER,
+            role: UserRole.OWNER,
             metadata: {
               createdAt: new Date(),
               isDefault: !data.organizationName, // Marcar si es la org por defecto
             },
           });
 
-          console.log("organization111", organization)
-
           if (!organization.success) {
             setError(organization.error || "Error al crear la organización");
             return;
           }
-
-          console.log("organization222", organization)
 
           router.push("/dashboard");
         },
@@ -113,8 +105,6 @@ export function RegisterForm() {
         },
       }
     );
-
-    console.log("result", result)
   }
 
   return (

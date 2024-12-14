@@ -9,12 +9,32 @@ import NextBreadcrumb from "@/components/next-breadcrumbs";
 import { Suspense } from "react";
 import DashboardLoading from "./loading";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { session } from "@/lib/auth-server";
+import { UserRole } from "@/lib/constants/roles";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const auth = await session();
+  
+  // Si no hay sesión, redirigir a login
+  if (!auth?.user) {
+    redirect("/login");
+  }
+
+  // Si es SUPER_ADMIN, redirigir al panel de admin
+  if (auth.user.role === UserRole.ADMIN) {
+    redirect("/admin");
+  }
+
+  // Si no tiene organización activa y no es SUPER_ADMIN, redirigir a onboarding
+  /* if (!auth.session.activeOrganizationId && auth.user.role !== UserRole.ADMIN) {
+    redirect("/onboarding");
+  } */
+
   return (
     <div className="bg-muted/50">
       <SidebarProvider>

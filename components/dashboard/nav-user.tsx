@@ -40,7 +40,7 @@ export function NavUser() {
     isPending, //loading state
     error, //error object
   } = authClient.useSession();
-  
+
   const user = session?.user;
 
   const logout = async () => {
@@ -55,7 +55,7 @@ export function NavUser() {
 
   return (
     <SidebarMenu>
-      <SidebarMenuItem>
+      <SidebarMenuItem className="bg-background shadow-sm hover:bg-background hover:shadow-sm rounded-lg py-1 px-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
@@ -84,7 +84,7 @@ export function NavUser() {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user?.image} alt={user?.name} />
+                  <AvatarImage src={user?.image || ""} alt={user?.name || ""} />
                   <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">

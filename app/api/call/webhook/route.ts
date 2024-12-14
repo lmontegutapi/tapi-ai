@@ -35,7 +35,7 @@ async function handler(req: Request) {
     const message = `
       Hola ${receivable.contact.name},
       Le llamo de ${campaign.context}.
-      Nos comunicamos por una deuda pendiente de $${receivable.amount}
+      Nos comunicamos por una deuda pendiente de $${receivable.amountCents / 100}
       con vencimiento el ${receivable.dueDate.toLocaleDateString()}.
       ${campaign.welcomeMessage}
     `.trim()

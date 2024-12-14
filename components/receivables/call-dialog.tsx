@@ -125,7 +125,7 @@ export function CallDialog({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Monto</span>
-                <span>{formatCurrency(Number(receivable.amount))}</span>
+                <span>{formatCurrency(Number(receivable.amountCents))}</span>
               </div>
               {status === "connected" && (
                 <div className="flex justify-between items-center">

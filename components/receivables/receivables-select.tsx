@@ -87,7 +87,7 @@ export function ReceivablesSelect({
                 <div className="flex flex-col">
                   <span>{receivable.contact.name}</span>
                   <span className="text-sm text-muted-foreground">
-                    ${receivable.amount.toString()} - Vence: {new Date(receivable.dueDate).toLocaleDateString()}
+                    ${receivable.amountCents.toString()} - Vence: {new Date(receivable.dueDate).toLocaleDateString()}
                   </span>
                 </div>
               </CommandItem>

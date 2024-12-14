@@ -77,7 +77,7 @@ export async function createReceivables(
         error: "No autorizado",
       };
     }
-    
+
     const organizationId = session.session.activeOrganizationId;
 
     // Crear los receivables en una transacción
@@ -206,8 +206,7 @@ export async function initiateCall(receivableId: string, campaignId?: string) {
         receivableId,
         campaignId, // Opcional
         status: "SCHEDULED",
-        duration: 0,
-        paymentPromise: false,
+        duration: 0
       },
     });
 

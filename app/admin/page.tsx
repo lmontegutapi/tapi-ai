@@ -9,7 +9,7 @@ import { UserRole } from "@/lib/constants/roles";
 
 async function getDashboardData() {
   const auth = await session();
-  if (auth?.user?.role?.toUpperCase() !== UserRole.ADMIN) {
+  if (auth?.user?.role?.toUpperCase() !== UserRole.SUPER_ADMIN) {
     return null;
   }
 

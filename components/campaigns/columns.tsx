@@ -16,6 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { formatDate } from "@/lib/utils"
+import { toast } from "@/hooks/use-toast"
+import { 
+  viewCampaignCalls, 
+  toggleCampaignStatus, 
+  cancelCampaign 
+} from "@/actions/campaigns"
+import { useRouter } from "next/navigation"
 
 export const columns: ColumnDef<Campaign>[] = [
   {
@@ -120,6 +127,64 @@ export const columns: ColumnDef<Campaign>[] = [
     id: "actions",
     cell: ({ row }) => {
       const campaign = row.original
+      const router = useRouter()
+
+      async function handleViewCalls() {
+        try {
+          const result = await viewCampaignCalls(campaign.id)
+          if (!result.success) {
+            throw new Error(result.error)
+          }
+          // Aquí podrías abrir un modal o navegar a una página de detalle
+          router.push(`/dashboard/campaigns/${campaign.id}/calls`)
+        } catch (error: any) {
+          toast({
+            title: "Error",
+            description: error.message || "No se pudieron cargar las llamadas",
+            variant: "destructive",
+          })
+        }
+      }
+
+      async function handleToggleStatus() {
+        try {
+          const result = await toggleCampaignStatus(campaign.id)
+          if (!result.success) {
+            throw new Error(result.error)
+          }
+          toast({
+            title: "Estado actualizado",
+            description: `Campaña ${campaign.status === "ACTIVE" ? "pausada" : "activada"} correctamente`,
+          })
+          router.refresh()
+        } catch (error: any) {
+          toast({
+            title: "Error",
+            description: error.message || "No se pudo actualizar el estado",
+            variant: "destructive",
+          })
+        }
+      }
+
+      async function handleCancel() {
+        try {
+          const result = await cancelCampaign(campaign.id)
+          if (!result.success) {
+            throw new Error(result.error)
+          }
+          toast({
+            title: "Campaña cancelada",
+            description: "La campaña se ha cancelado correctamente",
+          })
+          router.refresh()
+        } catch (error: any) {
+          toast({
+            title: "Error",
+            description: error.message || "No se pudo cancelar la campaña",
+            variant: "destructive",
+          })
+        }
+      }
 
       return (
         <DropdownMenu>
@@ -131,11 +196,11 @@ export const columns: ColumnDef<Campaign>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleViewCalls}>
               <Phone className="mr-2 h-4 w-4" />
               Ver llamadas
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleToggleStatus}>
               {campaign.status === "ACTIVE" ? (
                 <>
                   <Pause className="mr-2 h-4 w-4" />
@@ -149,8 +214,11 @@ export const columns: ColumnDef<Campaign>[] = [
               )}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Editar</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push(`/dashboard/campaigns/${campaign.id}/edit`)}>
+              Editar
+            </DropdownMenuItem>
             <DropdownMenuItem 
+              onClick={handleCancel}
               className="text-destructive"
               disabled={campaign.status === "COMPLETED"}
             >

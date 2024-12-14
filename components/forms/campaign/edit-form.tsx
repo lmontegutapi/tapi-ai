@@ -49,7 +49,7 @@ const campaignFormSchema = z.object({
     .string()
     .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
   callsPerUser: z.coerce.number().min(1).max(10),
-  voiceType: z.string(),
+  voiceType: z.enum(["NEUTRAL", "FRIENDLY", "PROFESSIONAL"]).default("NEUTRAL"),
 });
 
 type CampaignFormValues = z.infer<typeof campaignFormSchema>;
@@ -68,12 +68,12 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
       context: campaign.context,
       objective: campaign.objective,
       welcomeMessage: campaign.welcomeMessage,
-      startDate: campaign.startDate.split("T")[0],
-      endDate: campaign.endDate.split("T")[0],
+      startDate: campaign.startDate.toISOString().split("T")[0],
+      endDate: campaign.endDate.toISOString().split("T")[0],
       startTime: campaign.startTime,
       endTime: campaign.endTime,
       callsPerUser: campaign.callsPerUser,
-      voiceType: campaign.voiceType,
+      voiceType: campaign.voiceType as "NEUTRAL" | "FRIENDLY" | "PROFESSIONAL",
     },
   });
 
@@ -284,8 +284,9 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="male">Masculina</SelectItem>
-                        <SelectItem value="female">Femenina</SelectItem>
+                        <SelectItem value="NEUTRAL">Neutral</SelectItem>
+                        <SelectItem value="FRIENDLY">Amigable</SelectItem>
+                        <SelectItem value="PROFESSIONAL">Profesional</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

@@ -8,7 +8,7 @@ export enum UserRole {
 
 // Metadatos útiles para la UI
 export const roleMetadata = {
-  [UserRole.ADMIN]: {
+  [UserRole.SUPER_ADMIN]: {
     label: "Super Admin",
     variant: "destructive",
     description: "Puede gestionar todo el sistema",

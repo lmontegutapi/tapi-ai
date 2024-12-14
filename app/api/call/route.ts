@@ -12,19 +12,45 @@ const ably = new Ably.Realtime(process.env.ABLY_API_KEY!)
 
 export async function POST(req: Request) {
   try {
-    const session = await serverSession()
-    if (!session) {
+    // Verificar el token de autorización
+    /* const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Missing authorization token' },
         { status: 401 }
+      );
+    } */
+
+    // Extraer el token
+    /* const token = authHeader.split(' ')[1]; */
+    
+    // Validar el token con BetterAuth
+    /* const session = await serverSession();
+    if (!session || session.session.token !== token) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    } */
+
+    const { phoneNumber, receivableId, callId, isManual, campaignId } = await req.json()
+
+    // Validar datos requeridos
+    if (!phoneNumber || !receivableId || !callId) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
       )
     }
 
-    const { phoneNumber, receivableId } = await req.json()
-
     // Crear un canal único para esta llamada
-    const channelId = `call-${receivableId}-${Date.now()}`
+    const channelId = `call-${callId}-${Date.now()}`
     const channel = ably.channels.get(channelId)
+
+    const baseUrl = process.env.API_URL || req.headers.get('origin')
+    if (!baseUrl) {
+      throw new Error('Base URL not configured')
+    }
 
     // Iniciar la llamada con Twilio
     const call = await client.calls.create({
@@ -33,7 +59,7 @@ export async function POST(req: Request) {
       twiml: `
         <Response>
           <Connect>
-            <Stream url="wss://${req.headers.get('host')}/api/call/stream?channelId=${channelId}" />
+            <Stream url="wss://${baseUrl}/api/call/stream?channelId=${channelId}" />
           </Connect>
         </Response>
       `
@@ -46,7 +72,7 @@ export async function POST(req: Request) {
     })
 
   } catch (error) {
-    console.error('Error iniciando llamada:', error)
+    console.error('Error iniciando llamada api/call:', error)
     return NextResponse.json(
       { error: 'Error iniciando llamada' },
       { status: 500 }

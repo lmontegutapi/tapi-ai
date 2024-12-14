@@ -35,14 +35,22 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { createAgent } from "@/actions/agents";
+import { Slider } from "@/components/ui/slider";
+import { VoicePreviewButton } from "@/components/agents/voice-preview-button";
+import { useQuery } from "@tanstack/react-query";
+import { getVoices, type ElevenLabsVoice } from "@/lib/services/elevenlabs";
+import { ScrollArea } from "../ui/scroll-area";
 
 const agentSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  description: z
-    .string()
-    .min(10, "La descripción debe tener al menos 10 caracteres"),
-  elevenlabsId: z.string().min(1, "Debes proporcionar un ID de ElevenLabs"),
+  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
+  voiceId: z.string().min(1, "Debes seleccionar una voz"),
   voiceType: z.enum(["male", "female"]),
+  stability: z.number().min(0).max(1).default(0.5),
+  similarityBoost: z.number().min(0).max(1).default(0.75),
+  style: z.number().min(0).max(1).default(0.5),
+  useCase: z.enum(["COLLECTIONS", "CUSTOMER_SERVICE", "SALES"]).default("COLLECTIONS"),
+  speakingStyle: z.enum(["PROFESSIONAL", "FRIENDLY", "ASSERTIVE"]).default("PROFESSIONAL"),
 });
 
 export function NewAgentDrawer() {
@@ -54,14 +62,36 @@ export function NewAgentDrawer() {
     defaultValues: {
       name: "",
       description: "",
-      elevenlabsId: "",
+      voiceId: "",
       voiceType: "female"
     },
   });
 
+  const { data: voices = [] } = useQuery({
+    queryKey: ["elevenlabs-voices"],
+    queryFn: getVoices
+  });
+
   async function onSubmit(data: z.infer<typeof agentSchema>) {
     try {
-      const result = await createAgent(data);
+      const selectedVoice = voices.find(v => v.voice_id === data.voiceId);
+      if (!selectedVoice) {
+        throw new Error("Voz no encontrada");
+      }
+
+      const agentId = data.useCase === "COLLECTIONS" ? "collections-pro" : "customer-service";
+
+      const result = await createAgent({
+        ...data,
+        baseAgentId: agentId,
+        customConfig: {
+          stability: data.stability,
+          similarityBoost: data.similarityBoost,
+          style: data.style,
+          useCase: data.useCase,
+          speakingStyle: data.speakingStyle
+        }
+      });
 
       if (!result) {
         throw new Error("No se pudo crear el agente");
@@ -105,9 +135,10 @@ export function NewAgentDrawer() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 pt-4"
           >
-            <FormField
-              control={form.control}
-              name="name"
+            <ScrollArea className="h-max">
+              <FormField
+                control={form.control}
+                name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nombre del agente</FormLabel>
@@ -138,14 +169,37 @@ export function NewAgentDrawer() {
 
             <FormField
               control={form.control}
-              name="elevenlabsId"
+              name="voiceId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ID de ElevenLabs</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Ej: eleven-labs-voice-id" />
-                  </FormControl>
-                  <FormDescription>ID de la voz en ElevenLabs</FormDescription>
+                  <FormLabel>Voz del Agente</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una voz" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {voices?.map((voice) => (
+                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                          <div className="flex flex-col">
+                            <span>{voice.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {voice?.labels.description}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-2 mt-2">
+                    {field.value && <VoicePreviewButton voiceId={field.value} />}
+                    {field.value && (
+                      <p className="text-xs text-muted-foreground">
+                        {voices?.find(v => v.voice_id === field.value)?.labels.use_case}
+                      </p>
+                    )}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -176,15 +230,107 @@ export function NewAgentDrawer() {
               )}
             />
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Configuración de Voz</h3>
+              
+              <FormField
+                control={form.control}
+                name="stability"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estabilidad de Voz</FormLabel>
+                    <FormControl>
+                      <Slider 
+                        value={[field.value]}
+                        onValueChange={([value]) => field.onChange(value)}
+                        max={1}
+                        step={0.1}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Controla la estabilidad de la voz. Valores más altos = más estable
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="similarityBoost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Similitud de Voz</FormLabel>
+                    <FormControl>
+                      <Slider 
+                        value={[field.value]}
+                        onValueChange={([value]) => field.onChange(value)}
+                        max={1}
+                        step={0.1}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Controla qué tan similar es la voz al original
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="useCase"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Caso de Uso</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona el caso de uso" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="COLLECTIONS">Cobranza</SelectItem>
+                        <SelectItem value="CUSTOMER_SERVICE">Atención al Cliente</SelectItem>
+                        <SelectItem value="SALES">Ventas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="speakingStyle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estilo de Habla</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona el estilo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="PROFESSIONAL">Profesional</SelectItem>
+                        <SelectItem value="FRIENDLY">Amigable</SelectItem>
+                        <SelectItem value="ASSERTIVE">Asertivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+            </div>
+            </ScrollArea>
+
+            <div className="flex justify-end gap-3 pt-4 flex-col">
               <Button
                 variant="outline"
                 onClick={() => setOpen(false)}
                 disabled={form.formState.isSubmitting}
+                className="w-full"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
+              <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
                 {form.formState.isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

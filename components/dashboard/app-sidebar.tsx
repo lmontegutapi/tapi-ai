@@ -51,18 +51,25 @@ const data = {
       isActive: true,
     },
     {
-      title: "Campañas",
-      url: "/dashboard/campaigns",
-      icon: Phone,
-      isActive: true,
-      allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
-    },
-    {
       title: "Deudas",
       url: "/dashboard/receivables",
       icon: DollarSign,
       isActive: true,
       allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.AGENT],
+    },
+    {
+      title: "Campañas",
+      url: "/dashboard/campaigns",
+      icon: Phone,
+      isActive: true,
+      allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
+    },    
+    {
+      title: "Agentes",
+      url: "/dashboard/agents",
+      icon: Bot,
+      allowedRoles: [UserRole.OWNER, UserRole.ADMIN],
+      isActive: true,
     },
     {
       title: "Configuración",
@@ -71,6 +78,7 @@ const data = {
       allowedRoles: [UserRole.OWNER, UserRole.ADMIN],
       isActive: true,
     },
+    
   ],
   /* navSecondary: [
     {

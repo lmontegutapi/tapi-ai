@@ -26,12 +26,12 @@ export default async function DashboardLayout({
   }
 
   // Si es SUPER_ADMIN, redirigir al panel de admin
-  if (auth.user.role === UserRole.ADMIN) {
+  if (auth.user.role === UserRole.SUPER_ADMIN) {
     redirect("/admin");
   }
 
   // Si no tiene organización activa y no es SUPER_ADMIN, redirigir a onboarding
-  /* if (!auth.session.activeOrganizationId && auth.user.role !== UserRole.ADMIN) {
+  /* if (!auth.session.activeOrganizationId && auth.user.role !== UserRole.SUPER_ADMIN) {
     redirect("/onboarding");
   } */
 

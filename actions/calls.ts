@@ -77,7 +77,7 @@ export async function initiateCall(receivableId: string) {
     }
 
   } catch (error) {
-    console.error('Error iniciando llamada:', error)
+    console.error('Error iniciando llamada actions/calls:', error)
     return {
       success: false,
       error: "Error al iniciar la llamada"

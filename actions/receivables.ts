@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { session as serverSession } from "@/lib/auth-server";
+import axios from "axios";
 
 interface ParsedReceivable {
   identifier?: string;
@@ -19,15 +20,17 @@ interface ParsedReceivable {
 
 export async function uploadReceivables(formData: FormData) {
   try {
-    const response = await fetch(
+    const response = await axios.post(
       `${process.env.NEXT_PUBLIC_API_URL}/receivables/upload`,
+      formData,
       {
-        method: "POST",
-        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }
     );
 
-    const result = await response.json();
+    const result = response.data;
 
 
     const data = await auth.api.getSession({
@@ -160,6 +163,7 @@ export async function getReceivables() {
     },
     include: {
       contact: true,
+      campaign: true,
     },
   });
 
@@ -183,47 +187,117 @@ const paymentSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function initiateCall(receivableId: string, campaignId?: string) {
+export async function initiateCall(receivableId: string, campaignId?: string, isManual: boolean = false) {
   try {
     const session = await serverSession();
     if (!session) {
       return { success: false, error: "No autorizado" };
     }
 
-    // Obtener el receivable con el contacto
+    // Validar que existe la URL de la API
+    if (!process.env.NEXT_PUBLIC_API_URL) {
+      throw new Error("API URL no configurada");
+    }
+
     const receivable = await prisma.receivable.findUnique({
       where: { id: receivableId },
-      include: { contact: true },
+      include: { 
+        contact: true,
+        campaign: true 
+      },
     });
 
     if (!receivable) {
       return { success: false, error: "Deuda no encontrada" };
     }
 
+    if (!receivable.contact.phone) {
+      return { success: false, error: "El contacto no tiene número de teléfono" };
+    }
+
+    // Validar formato del teléfono
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(receivable.contact.phone)) {
+      return { success: false, error: "Formato de teléfono inválido" };
+    }
+
     // Crear registro de llamada
     const call = await prisma.call.create({
       data: {
         receivableId,
-        campaignId, // Opcional
+        campaignId,
         status: "SCHEDULED",
-        duration: 0
+        duration: 0,
+        metadata: {
+          scheduledAt: new Date(),
+          scheduledBy: session.user.id,
+          isManual,
+          source: isManual ? "MANUAL" : "CAMPAIGN"
+        }
       },
     });
 
-    // Aquí iría la integración con ElevenLabs y Twilio
-    // Por ahora solo simulamos la llamada
+    try {
+      // Iniciar llamada con Twilio
+      const response = await axios.post(`${process.env.API_URL}/call`, {
+        phoneNumber: receivable.contact.phone,
+        receivableId: receivable.id,
+        callId: call.id,
+        isManual,
+        campaignId: receivable.campaignId
+      }, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.session.token}`,
+        }
+      });
 
-    revalidatePath("/dashboard/receivables");
+      console.log("response.data", response.data)
 
-    return {
-      success: true,
-      data: call,
-    };
-  } catch (error) {
-    console.error("Error iniciando llamada:", error);
-    return {
-      success: false,
-      error: "Error al iniciar la llamada",
+      if (response.status !== 200) {
+        throw new Error(response.data.error || 'Error al iniciar la llamada');
+      }
+
+      const result = response.data;
+
+      await prisma.call.update({
+        where: { id: call.id },
+        data: {
+          status: "IN_PROGRESS",
+          metadata: {
+            ...call.metadata,
+            twilioSid: result.callSid,
+            channelId: result.channelId
+          }
+        }
+      });
+
+      revalidatePath("/dashboard/receivables");
+
+      return {
+        success: true,
+        data: { call, twilioData: result }
+      };
+    } catch (fetchError) {
+      // Si falla la llamada, actualizar el estado del registro
+      await prisma.call.update({
+        where: { id: call.id },
+        data: {
+          status: "FAILED",
+          metadata: {
+            ...call.metadata,
+            error: fetchError.message,
+            failedAt: new Date()
+          }
+        }
+      });
+      throw fetchError;
+    }
+  } catch (error: any) {
+    console.error("Error iniciando llamada receivables:", error);
+    return { 
+      success: false, 
+      error: error.message || "Error al iniciar la llamada"
     };
   }
 }
@@ -492,5 +566,46 @@ export async function updateReceivable(
       success: false,
       error: "Error al actualizar la deuda"
     }
+  }
+}
+
+export async function deleteReceivable(receivableId: string) {
+  try {
+    const session = await serverSession();
+    if (!session) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    // Verificar que el receivable existe y pertenece a la organización
+    const receivable = await prisma.receivable.findFirst({
+      where: {
+        id: receivableId,
+        organizationId: session.session.activeOrganizationId,
+      },
+    });
+
+    if (!receivable) {
+      return { success: false, error: "Deuda no encontrada" };
+    }
+
+    // No permitir eliminar si está en una campaña activa
+    if (receivable.campaignId) {
+      const campaign = await prisma.campaign.findUnique({
+        where: { id: receivable.campaignId }
+      });
+      if (campaign?.status === "ACTIVE") {
+        return { success: false, error: "No se puede eliminar una deuda en una campaña activa" };
+      }
+    }
+
+    await prisma.receivable.delete({
+      where: { id: receivableId },
+    });
+
+    revalidatePath("/dashboard/receivables");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting receivable:", error);
+    return { success: false, error: "Error al eliminar la deuda" };
   }
 }

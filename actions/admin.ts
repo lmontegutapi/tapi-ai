@@ -18,7 +18,7 @@ export async function createOrganizationWithAdmin(
 ) {
   const auth = await session();
   
-  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+  if (!auth?.user || auth.user.role !== UserRole.SUPER_ADMIN) {
     throw new Error("No autorizado");
   }
 
@@ -71,7 +71,7 @@ export async function createOrganizationWithAdmin(
 export async function getOrganizations() {
   const auth = await session();
   
-  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+  if (!auth?.user || auth.user.role !== UserRole.SUPER_ADMIN) {
     throw new Error("No autorizado");
   }
 
@@ -97,7 +97,7 @@ export async function getOrganizations() {
 export async function getUsers() {
   const auth = await session();
   
-  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+  if (!auth?.user || auth.user.role !== UserRole.SUPER_ADMIN) {
     throw new Error("No autorizado");
   }
 

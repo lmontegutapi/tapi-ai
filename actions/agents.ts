@@ -4,12 +4,23 @@ import axios from 'axios'
 import { prisma } from '@/lib/db'
 import { session as serverSession } from '@/lib/auth-server'
 import { Agent, Prisma } from '@prisma/client'
+import { PREDEFINED_AGENTS, type ElevenLabsAgent as ElevenLabsAgentConfig } from '@/lib/services/elevenlabs'
 
 type CreateAgentInput = {
   name: string;
   description: string;
-  elevenlabsId: string;
-  voiceType: "male" | "female";
+  baseAgentId: string;
+  elevenlabsId?: string;
+  voiceType?: "male" | "female";
+  customConfig?: {
+    voiceGender?: string;
+    voiceAge?: string;
+    voiceStyle?: string;
+    voicePitch?: number;
+    voiceSpeed?: number;
+    voiceStability?: number;
+    voiceSimilarity?: number;
+  }
 }
 
 type UpdateAgentInput = {
@@ -17,7 +28,14 @@ type UpdateAgentInput = {
   description?: string;
   elevenlabsId?: string;
   voiceType?: "male" | "female";
+  stability?: number;
+  similarityBoost?: number;
+  style?: number;
+  useCase?: "COLLECTIONS" | "CUSTOMER_SERVICE" | "SALES";
+  speakingStyle?: "PROFESSIONAL" | "FRIENDLY" | "ASSERTIVE";
 }
+
+const MAX_AGENTS_PER_ORGANIZATION = 2;
 
 export async function getAgents() {
   const session = await serverSession()
@@ -60,6 +78,9 @@ export async function createAgent(data: CreateAgentInput) {
           userId: session.user.id
         }
       }
+    },
+    include: {
+      agent: true
     }
   })
 
@@ -67,16 +88,50 @@ export async function createAgent(data: CreateAgentInput) {
     throw new Error("No se encontró la organización")
   }
 
+  if (organization.agent.length >= MAX_AGENTS_PER_ORGANIZATION) {
+    throw new Error(`Has alcanzado el límite de ${MAX_AGENTS_PER_ORGANIZATION} agentes por organización`)
+  }
+
+  const baseAgent = PREDEFINED_AGENTS.find(a => a.id === data.baseAgentId);
+  if (!baseAgent) {
+    throw new Error("Agente base no encontrado");
+  }
+
+  const config = {
+    ...baseAgent.default_config,
+    voice_settings: {
+      ...baseAgent.default_config.voice_settings,
+      ...data.customConfig
+    }
+  };
+
   const newAgent = await prisma.agent.create({
     data: {
-      ...data,
+      name: data.name,
+      description: data.description,
       organizationId: organization.id,
+      elevenlabsId: baseAgent.voice_id,
+      voiceType: data.voiceType || "neutral",
+      voiceId: baseAgent.voice_id,
+      voiceGender: baseAgent.voiceGender,
+      voiceAge: baseAgent.voiceAge,
+      voiceStyle: baseAgent.voiceStyle,
+      voicePitch: baseAgent.voicePitch,
+      voiceSpeed: baseAgent.voiceSpeed,
+      voiceStability: baseAgent.voiceStability,
+      voiceSimilarity: baseAgent.voiceSimilarity,
+      voiceName: baseAgent.name,
+      voiceLanguage: "es",
       isActive: true,
-      metadata: Prisma.JsonNull
+      metadata: {
+        baseAgentId: data.baseAgentId,
+        config,
+        lastUpdated: new Date()
+      }
     }
-  })
+  });
 
-  return newAgent
+  return newAgent;
 }
 
 export async function updateAgent(id: string, data: UpdateAgentInput) {
@@ -85,11 +140,36 @@ export async function updateAgent(id: string, data: UpdateAgentInput) {
     throw new Error("No autorizado")
   }
 
+  const elevenLabsConfig = {
+    conversation_config: {
+      agent: {
+        prompt: data.description,
+        llm: "gpt-4",
+        temperature: 0.7,
+        max_tokens: 150,
+        language: "es"
+      },
+      tts: {
+        model_id: "eleven_turbo_v2",
+        voice_id: data.elevenlabsId,
+        optimize_streaming_latency: 1,
+        stability: data.stability,
+        similarity_boost: data.similarityBoost
+      }
+    }
+  }
+
   return await prisma.agent.update({
     where: { id },
     data: {
       ...data,
-      metadata: Prisma.JsonNull
+      metadata: {
+        elevenlabs: elevenLabsConfig,
+        style: data.style,
+        useCase: data.useCase,
+        speakingStyle: data.speakingStyle,
+        lastUpdated: new Date()
+      }
     }
   });
 }

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { ReceivableWithContact } from "@/types/receivables"
 import { ActionCell } from "./action-cell"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Campaign } from "@prisma/client"
 
 export const columns: ColumnDef<ReceivableWithContact>[] = [
   {
@@ -48,7 +49,7 @@ export const columns: ColumnDef<ReceivableWithContact>[] = [
     accessorKey: "amount",
     header: "Monto",
     cell: ({ row }) => {
-      const amountCents = parseFloat(row.getValue("amountCents"))
+      const amountCents = row.original.amountCents
       return <div className="font-medium">{formatCurrency(amountCents)}</div>
     },
   },
@@ -93,6 +94,40 @@ export const columns: ColumnDef<ReceivableWithContact>[] = [
     header: "Concepto",
     cell: ({ row }) => {
       return <div>{row.getValue("notes") || "Sin concepto"}</div>
+    },
+  },
+  {
+    accessorKey: "campaign",
+    header: "Campaña",
+    cell: ({ row }) => {
+      const campaign = row.original.campaign as Campaign | null;
+      
+      if (!campaign) {
+        return (
+          <span className="text-muted-foreground text-sm">
+            Sin campaña
+          </span>
+        );
+      }
+
+      return (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">
+            {campaign.name}
+          </span>
+          <Badge className="max-w-fit" variant={
+            campaign.status === "ACTIVE" ? "default" :
+            campaign.status === "PAUSED" ? "secondary" :
+            campaign.status === "COMPLETED" ? "outline" : 
+            "destructive"
+          }>
+            {campaign.status === "ACTIVE" ? "Activa" :
+             campaign.status === "PAUSED" ? "Pausada" :
+             campaign.status === "COMPLETED" ? "Completada" :
+             "Cancelada"}
+          </Badge>
+        </div>
+      );
     },
   },
   {

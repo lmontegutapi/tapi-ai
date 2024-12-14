@@ -21,7 +21,7 @@ const campaignSchema = z.object({
   callsPerUser: z.coerce.number().min(1).max(10),
   agentId: z.string().min(1, "Debes seleccionar un agente"),
   voiceType: z.enum(["NEUTRAL", "FRIENDLY", "PROFESSIONAL"]).default("NEUTRAL"),
-  receivableIds: z.array(z.string()).min(1, "Debes seleccionar al menos una deuda")
+  receivableIds: z.array(z.string()).optional(),
 });
 
 type CampaignInput = z.infer<typeof campaignSchema>;
@@ -33,7 +33,6 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
       return { success: false, error: "No autorizado" }
     }
 
-    // Obtener la organización activa
     const organization = await prisma.organization.findFirst({
       where: {
         members: {
@@ -48,16 +47,18 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
       return { success: false, error: "Organización no encontrada" }
     }
 
-    // Verificar que el agente exista y pertenezca a la organización
-    const agent = await prisma.agent.findFirst({
-      where: {
-        id: data.agentId,
-        organizationId: organization.id
-      }
-    })
-
-    if (!agent) {
-      return { success: false, error: "Agente no encontrado" }
+    // Si no se especifican deudas, obtener todas las deudas abiertas
+    let receivableIds = data.receivableIds;
+    if (!receivableIds || receivableIds.length === 0) {
+      const allReceivables = await prisma.receivable.findMany({
+        where: {
+          organizationId: organization.id,
+          status: "OPEN",
+          campaignId: null // Solo deudas que no estén en otra campaña
+        },
+        select: { id: true }
+      });
+      receivableIds = allReceivables.map(r => r.id);
     }
 
     const campaign = await prisma.campaign.create({
@@ -73,11 +74,11 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
         endTime: data.endTime,
         callsPerUser: data.callsPerUser,
         agentId: data.agentId,
-        totalCalls: data.receivableIds.length * data.callsPerUser,
+        totalCalls: receivableIds.length * data.callsPerUser,
         status: "DRAFT",
         voiceType: data.voiceType ?? "NEUTRAL",
         receivables: {
-          connect: data.receivableIds.map(id => ({ id }))
+          connect: receivableIds.map(id => ({ id }))
         }
       }
     })
@@ -88,7 +89,6 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
       success: true,
       data: campaign
     }
-
   } catch (error) {
     console.error('Error creating campaign:', error)
     return {
@@ -97,6 +97,7 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
     }
   }
 }
+
 export async function updateCampaign(
   campaignId: string,
   input: Partial<CampaignInput>
@@ -362,4 +363,153 @@ export async function getCampaignWithCalls(campaignId: string) {
     include: { calls: true },
   });
   return campaign;
+}
+
+export async function viewCampaignCalls(campaignId: string) {
+  const session = await sessionServer();
+  if (!session) {
+    return { success: false, error: "No autorizado" };
+  }
+
+  try {
+    const calls = await prisma.call.findMany({
+      where: {
+        campaignId,
+        organization: {
+          members: {
+            some: {
+              userId: session.user.id
+            }
+          }
+        }
+      },
+      include: {
+        receivable: {
+          include: {
+            contact: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return { success: true, data: calls };
+  } catch (error) {
+    console.error('Error getting campaign calls:', error);
+    return { success: false, error: "Error al obtener las llamadas" };
+  }
+}
+
+export async function toggleCampaignStatus(campaignId: string) {
+  const session = await sessionServer();
+  if (!session) {
+    return { success: false, error: "No autorizado" };
+  }
+
+  try {
+    const campaign = await prisma.campaign.findFirst({
+      where: {
+        id: campaignId,
+        organization: {
+          members: {
+            some: {
+              userId: session.user.id
+            }
+          }
+        }
+      }
+    });
+
+    if (!campaign) {
+      return { success: false, error: "Campaña no encontrada" };
+    }
+
+    const newStatus = campaign.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+
+    const updatedCampaign = await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { 
+        status: newStatus,
+        metadata: {
+          ...campaign.metadata,
+          lastStatusChange: new Date(),
+          lastStatusChangeBy: session.user.id
+        }
+      }
+    });
+
+    revalidatePath('/dashboard/campaigns');
+    return { success: true, data: updatedCampaign };
+  } catch (error) {
+    console.error('Error toggling campaign status:', error);
+    return { success: false, error: "Error al actualizar el estado" };
+  }
+}
+
+export async function cancelCampaign(campaignId: string) {
+  const session = await sessionServer();
+  if (!session) {
+    return { success: false, error: "No autorizado" };
+  }
+
+  try {
+    const campaign = await prisma.campaign.findFirst({
+      where: {
+        id: campaignId,
+        organization: {
+          members: {
+            some: {
+              userId: session.user.id
+            }
+          }
+        }
+      }
+    });
+
+    if (!campaign) {
+      return { success: false, error: "Campaña no encontrada" };
+    }
+
+    if (campaign.status === "COMPLETED") {
+      return { success: false, error: "No se puede cancelar una campaña completada" };
+    }
+
+    const updatedCampaign = await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { 
+        status: "CANCELLED",
+        endDate: new Date(),
+        metadata: {
+          ...campaign.metadata,
+          cancelledAt: new Date(),
+          cancelledBy: session.user.id,
+          originalEndDate: campaign.endDate
+        }
+      }
+    });
+
+    // Cancelar todas las llamadas pendientes
+    await prisma.call.updateMany({
+      where: {
+        campaignId,
+        status: "SCHEDULED"
+      },
+      data: {
+        status: "CANCELLED",
+        metadata: {
+          cancelledAt: new Date(),
+          cancelledBy: session.user.id,
+          reason: "Campaign cancelled"
+        }
+      }
+    });
+
+    revalidatePath('/dashboard/campaigns');
+    return { success: true, data: updatedCampaign };
+  } catch (error) {
+    console.error('Error cancelling campaign:', error);
+    return { success: false, error: "Error al cancelar la campaña" };
+  }
 }

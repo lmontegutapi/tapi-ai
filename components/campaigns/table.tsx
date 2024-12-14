@@ -27,15 +27,22 @@ import {
 } from "@/components/ui/table"
 import Link from "next/link"
 import { EmptyCampaigns } from "./empty-campaigns"
+import { Receivable } from "@prisma/client"
+import { ElevenLabsAgent } from "../../lib/services/elevenlabs"
+import { NewCampaignDrawer } from "./new-campaign-drawer"
 
 interface CampaignsTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  agents?: any[]
+  receivables?: any[]
 }
 
 export function CampaignsTable<TData, TValue>({
   columns,
   data,
+  agents,
+  receivables,
 }: CampaignsTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -79,7 +86,6 @@ export function CampaignsTable<TData, TValue>({
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
             disabled={table.getFilteredSelectedRowModel().rows.length === 0}
             onClick={() => {
               // Implementar llamada masiva
@@ -88,11 +94,9 @@ export function CampaignsTable<TData, TValue>({
             <Phone className="mr-2 h-4 w-4" />
             Llamar seleccionados
           </Button>
-          <Button asChild>
-            <Link href="/dashboard/campaigns/new">
-              <Plus className="mr-2 h-4 w-4" /> Nueva Campaña
-            </Link>
-          </Button>
+          {agents && receivables && (
+            <NewCampaignDrawer agents={agents} receivables={receivables} />
+          )}
         </div>
       </div>
       <div className="rounded-md border">

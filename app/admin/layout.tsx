@@ -18,7 +18,7 @@ export default async function AdminLayout({
 }) {
   const auth = await session();
   
-  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+  if (!auth?.user || auth.user.role !== UserRole.SUPER_ADMIN) {
     redirect("/dashboard");
   }
 

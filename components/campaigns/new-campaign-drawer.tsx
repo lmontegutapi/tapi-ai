@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Bot, Loader2 } from "lucide-react";
+import { Bot, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,7 +61,7 @@ const campaignSchema = z.object({
   callsPerUser: z.coerce.number().min(1).max(10),
   voiceType: z.enum(["NEUTRAL", "FRIENDLY", "PROFESSIONAL"]).default("NEUTRAL"),
   agentId: z.string().min(1, "Debes seleccionar un agente"),
-  receivableIds: z.array(z.string()).min(1, "Debes seleccionar al menos una deuda")
+  receivableIds: z.array(z.string()).optional(),
 });
 
 interface NewCampaignDrawerProps {
@@ -131,7 +131,10 @@ export function NewCampaignDrawer({
       </SheetTrigger>
       <SheetContent className="w-[400px] sm:w-[540px]">
         <SheetHeader>
-          <SheetTitle>Nueva Campaña</SheetTitle>
+          <SheetTitle>
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Campaña
+          </SheetTitle>
           <SheetDescription>
             Crea una nueva campaña de llamadas automáticas
           </SheetDescription>
@@ -296,7 +299,7 @@ export function NewCampaignDrawer({
                 )}
               />
 
-              <div className="grid gap-4 grid-cols-2">
+              <div className="flex flex-col gap-4">
                 <FormField
                   control={form.control}
                   name="callsPerUser"
@@ -311,8 +314,6 @@ export function NewCampaignDrawer({
                     </FormItem>
                   )}
                 />
-
-                <Separator className="my-4" />
 
                 <FormField
                   control={form.control}
@@ -357,7 +358,7 @@ export function NewCampaignDrawer({
               </div>
             </ScrollArea>
 
-            <div className="flex justify-between gap-4 pt-4 w-full">
+            <div className="flex justify-between gap-4 w-full">
               <Button
                 variant="outline"
                 onClick={() => setOpen(false)}

@@ -29,14 +29,19 @@ export default async function CampaignsPage() {
             Gestiona tus campañas de cobranza y realiza llamadas automáticas
           </p>
         </div>
-        <NewCampaignDrawer agents={agents} receivables={receivables} />
+        {agents.length === 0 && (
+          <NewCampaignDrawer agents={agents} receivables={receivables} />
+        )}
       </div>
       <Separator />
       {!campaigns || campaigns.length === 0 ? (
         <EmptyCampaigns />
       ) : (
         <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
-          <CampaignsTable columns={columns} data={campaigns} />
+          <CampaignsTable columns={columns} data={campaigns} 
+            agents={agents}
+            receivables={receivables}
+          />
         </Suspense>
       )}
     </div>

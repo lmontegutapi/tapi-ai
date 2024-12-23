@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/select"
 import { EmptyUsers } from "./empty-users"
 import { UserRole, roleMetadata } from "@/lib/constants/roles"
+import { User } from "@prisma/client"
+import { UserWithMembers } from "./users-columns"
 
 export function UsersList() {
   const [sorting, setSorting] = useState<SortingState>([])
@@ -45,7 +47,7 @@ export function UsersList() {
     queryFn: getUsers
   })
 
-  const table = useReactTable({
+  const table = useReactTable<UserWithMembers>({
     data: users,
     columns,
     onSortingChange: setSorting,

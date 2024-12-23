@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
 import { registerSchema, type RegisterFormValues } from "./schema";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
@@ -23,10 +22,11 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { createOrganization, getOrganization } from "@/actions/organization";
+/* import { createOrganization, getOrganization } from "@/actions/organization"; */
 import { generateSlug } from "@/lib/utils";
 import { UserRole } from "@/lib/constants/roles";
-
+import { updateUser } from "@/actions/user";
+import { authClient } from "@/lib/auth-client";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -57,12 +57,39 @@ export function RegisterForm() {
           // Aquí podrías mostrar un loading state
         },
         onSuccess: async (ctx) => {
-          const organizationName =
+          /* const organizationName =
             data.organizationName || `${data.name}'s Organization`;
-          const baseSlug = generateSlug(organizationName);
+          const baseSlug = generateSlug(organizationName); */
           
           // Verificar si el slug ya existe y agregar sufijo si es necesario
-          const slug = baseSlug;
+          /* const slug = baseSlug;
+
+          console.log("@ctx", ctx);
+
+          const user = await authClient.updateUser(ctx.data.id, {
+            ...ctx.data,
+            role: "OWNER",
+          });
+
+          console.log("@user updated", user);
+
+          const organization = authClient.organization.create({
+            name: organizationName,
+            slug,
+            userId: ctx.data.id,
+            metadata: {
+              createdAt: new Date(),
+              isDefault: !data.organizationName, // Marcar si es la org por defecto
+            },
+          });
+
+          console.log("@organization", organization); */
+
+ /*          const user = updateUser(ctx.data.id, {
+            ...ctx.data,
+            role: UserRole.OWNER,
+          }); */
+
           //TODO: Agregar validacion de slug para que no se repita
           /* const isOrganizationExists = await getOrganization(slug);
 
@@ -77,7 +104,7 @@ export function RegisterForm() {
             return;
           } */
 
-          const organization = await createOrganization({
+          /* const organization = await createOrganization({
             name: organizationName,
             slug,
             userId: ctx.data.id,
@@ -88,10 +115,14 @@ export function RegisterForm() {
             },
           });
 
-          if (!organization.success) {
-            setError(organization.error || "Error al crear la organización");
+          const user = await updateUser(ctx.data.id, {
+            role: UserRole.OWNER,
+          });
+ */
+          /* if (!organization) {
+            setError("Error al crear la organización");
             return;
-          }
+          } */
 
           router.push("/dashboard");
         },

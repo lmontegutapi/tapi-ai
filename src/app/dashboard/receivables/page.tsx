@@ -13,7 +13,7 @@ export default async function ReceivablesPage() {
         <h1 className="text-3xl font-bold tracking-tight">Deudas</h1>
       </div>
 
-      {!receivables || receivables.length === 0 ? (
+      {!receivables ? (
         <EmptyState />
       ) : (
         <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>

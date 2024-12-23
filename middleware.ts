@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
  
 export default async function authMiddleware(request: NextRequest) {
 	const { data: session } = await betterFetch<Session>(
-		"/api/auth/get-session",
+		"api/auth/get-session",
 		{
 			baseURL: request.nextUrl.origin,
 			headers: {
@@ -19,7 +19,7 @@ export default async function authMiddleware(request: NextRequest) {
 	}
 	return NextResponse.next();
 }
- 
+
 export const config = {
-	matcher: ["/dashboard"],
+	matcher: ["/dashboard/:path*", "/api/auth/:path*", "/admin/:path*"],
 };

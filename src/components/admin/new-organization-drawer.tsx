@@ -27,8 +27,7 @@ import { useState } from "react"
 import { toast } from "@/hooks/use-toast"
 import { Building, Loader2 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
-import { createOrganizationWithOwner } from "@/actions/organization"
-import { UserRole } from "@prisma/client"
+import { createOrganization } from "@/actions/organization"
 
 const formSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -61,7 +60,7 @@ export function NewOrganizationDrawer() {
         name: values.ownerName,
         email: values.ownerEmail,
         password: values.ownerPassword,
-        role: UserRole.OWNER,
+        role: "ADMIN",
       })
 
       const org = await authClient.organization.create({

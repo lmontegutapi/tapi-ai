@@ -9,6 +9,8 @@ import { reactInvitationEmail } from "@/lib/email/invitation-email";
 import { reactResetPasswordEmail } from "@/lib/email/reset-password-email";
 import { prisma as prismaClient } from "@/lib/db";
 import { UserRole } from "./constants/roles";
+import { generateSlug } from "./utils";
+import { authClient } from "./auth-client";
 
 const prisma = new PrismaClient();
 
@@ -106,20 +108,21 @@ export const auth = betterAuth({
           },
         });
 
-        
         return userRole?.role === UserRole.ADMIN || userRole?.role === UserRole.SUPER_ADMIN;
       },
     }),
     admin(),
     nextCookies(),
-    openAPI(),
+    openAPI()
   ],
   databaseHooks: {
     session: {
       create: {
         before: async (session) => {
           try {
-            const organization = await getActiveOrganization(session.userId);
+            let organization = null;
+            organization = await getActiveOrganization(session.userId);
+
             return {
               data: {
                 ...session,
@@ -132,13 +135,7 @@ export const auth = betterAuth({
             return { data: session };
           }
         },
-      },
-      update: {
-        before: async (session) => {
-          const organization = await getActiveOrganization(session.userId);
-          return { data: { ...session, activeOrganizationId: organization.id } };
-        },
-      },
+      }
     },
   },
 });

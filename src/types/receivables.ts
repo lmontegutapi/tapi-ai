@@ -1,7 +1,8 @@
-import { Receivable, Contact } from "@prisma/client"
+import { Receivable, Contact, Campaign } from "@prisma/client"
 
 export type ReceivableWithContact = Receivable & {
   contact: Contact
+  campaign: Campaign
 }
 
 interface ReceivableMetadata {

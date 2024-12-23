@@ -1,9 +1,10 @@
 export enum UserRole {
-  SUPER_ADMIN = "SUPER_ADMIN",
-  OWNER = "OWNER",
-  ADMIN = "ADMIN",
-  MANAGER = "MANAGER",
-  AGENT = "AGENT",
+  SUPER_ADMIN = "super_admin",
+  OWNER = "owner",
+  ADMIN = "admin",
+  MANAGER = "manager",
+  AGENT = "agent",
+  USER = "user",
 }
 
 // Metadatos útiles para la UI
@@ -32,5 +33,10 @@ export const roleMetadata = {
     label: "Agente",
     variant: "ghost",
     description: "Solo puede hacer llamadas y gestionar deudas",
+  },
+  [UserRole.USER]: {
+    label: "Usuario",
+    variant: "ghost",
+    description: "Usuario de una organización",
   },
 } as const; 

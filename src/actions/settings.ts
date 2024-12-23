@@ -9,7 +9,6 @@ import { session as serverSession } from "@/lib/auth-server";
 
 const organizationSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  email: z.string().email("Email inválido"),
   logo: z.string().optional(),
   metadata: z.record(z.any()).optional()
 })
@@ -204,7 +203,7 @@ export async function removeTeamMember(memberId: string) {
 }
 
 // Actualizar preferencias de email
-export async function updateEmailPreferences(
+/* export async function updateEmailPreferences(
   preferences: z.infer<typeof emailPreferenceSchema>[]
 ) {
   try {
@@ -246,7 +245,7 @@ export async function updateEmailPreferences(
     }
   }
 }
-
+ */
 // Obtener templates de email
 export async function getEmailTemplates() {
   try {

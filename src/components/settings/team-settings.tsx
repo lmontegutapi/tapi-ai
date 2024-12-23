@@ -51,22 +51,22 @@ export function TeamSettings({ teamMembers }: { teamMembers: Member[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {teamMembers.map((member) => (
+              {teamMembers?.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell className="flex items-center gap-2">
                     <Avatar>
                       <AvatarImage src="/placeholder.jpg" />
                       <AvatarFallback>JD</AvatarFallback>
                     </Avatar>
-                    <span>{member.user.name}</span>
+                    <span>{member?.organizationId}</span>
                   </TableCell>
-                  <TableCell>{member.user.email}</TableCell>
+                  <TableCell>{member?.userId}</TableCell>
                   <TableCell>
                     <Badge>{member.role}</Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="default">{member.user.isActive ? "Activo" : "Inactivo"}</Badge>
-                  </TableCell>
+                 {/*  <TableCell>
+                    <Badge variant="default">{member?.user?.isActive ? "Activo" : "Inactivo"}</Badge>
+                  </TableCell> */}
                 </TableRow>
               ))}
             </TableBody>

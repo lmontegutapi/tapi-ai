@@ -35,7 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { useReceivablesStore } from "@/stores/receivables.store";
 import { NewReceivableDrawer } from "@/components/receivables/new-receivable-drawer";
 interface ReceivablesTableProps {
-  data: ReceivableWithContact[];
+  data: ReceivableWithContact[] | any;
 }
 
 export function ReceivablesTable({ data }: ReceivablesTableProps) {

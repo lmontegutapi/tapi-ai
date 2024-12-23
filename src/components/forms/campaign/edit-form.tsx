@@ -33,6 +33,21 @@ import { Separator } from "@/components/ui/separator";
 
 const campaignFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
+  organizationId: z.string().uuid("ID de organización inválido"),
+  startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
+    message: "Fecha de inicio inválida",
+  }),
+  endDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
+    message: "Fecha de fin inválida",
+  }),
+  startTime: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
+  endTime: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
+  callsPerUser: z.number().min(1).max(10),
+  status: z.enum(["DRAFT", "ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"]),
   context: z.string().min(10, "El contexto debe tener al menos 10 caracteres"),
   objective: z
     .string()
@@ -40,16 +55,9 @@ const campaignFormSchema = z.object({
   welcomeMessage: z
     .string()
     .min(10, "El mensaje debe tener al menos 10 caracteres"),
-  startDate: z.string(),
-  endDate: z.string(),
-  startTime: z
-    .string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
-  endTime: z
-    .string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
-  callsPerUser: z.coerce.number().min(1).max(10),
-  voiceType: z.enum(["NEUTRAL", "FRIENDLY", "PROFESSIONAL"]).default("NEUTRAL"),
+  voiceId: z.string().optional(),
+  voiceName: z.string().optional(),
+  voicePreviewUrl: z.string().url().optional(),
 });
 
 type CampaignFormValues = z.infer<typeof campaignFormSchema>;
@@ -65,15 +73,19 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
     resolver: zodResolver(campaignFormSchema),
     defaultValues: {
       name: campaign.name,
-      context: campaign.context,
-      objective: campaign.objective,
-      welcomeMessage: campaign.welcomeMessage,
+      organizationId: campaign.organizationId,
       startDate: campaign.startDate.toISOString().split("T")[0],
       endDate: campaign.endDate.toISOString().split("T")[0],
       startTime: campaign.startTime,
       endTime: campaign.endTime,
       callsPerUser: campaign.callsPerUser,
-      voiceType: campaign.voiceType as "NEUTRAL" | "FRIENDLY" | "PROFESSIONAL",
+      status: campaign.status,
+      context: campaign.context,
+      objective: campaign.objective,
+      welcomeMessage: campaign.welcomeMessage,
+      voiceId: campaign.voiceId || undefined,
+      voiceName: campaign.voiceName || undefined,
+      voicePreviewUrl: campaign.voicePreviewUrl || undefined,
     },
   });
 
@@ -263,32 +275,6 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
                     <FormDescription>
                       Número máximo de intentos por contacto
                     </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="voiceType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de voz</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un tipo de voz" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="NEUTRAL">Neutral</SelectItem>
-                        <SelectItem value="FRIENDLY">Amigable</SelectItem>
-                        <SelectItem value="PROFESSIONAL">Profesional</SelectItem>
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

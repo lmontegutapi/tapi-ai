@@ -98,10 +98,15 @@ export function NewCampaignDrawer({
 
   async function onSubmit(data: CampaignFormValues) {
     try {
-        const result = await createCampaign({
-          ...data,
-          receivableIds: [],
-        });
+      const selectedAgent = agents.find(agent => agent.id === data.agentId);
+      if (!selectedAgent) throw new Error("Agente no encontrado");
+
+      const result = await createCampaign({
+        ...data,
+        voiceId: selectedAgent.voiceId,
+        voiceName: selectedAgent.name,
+        receivableIds: [],
+      });
 
       if (!result.success) {
         throw new Error(result.error);

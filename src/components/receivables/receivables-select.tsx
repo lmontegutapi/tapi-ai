@@ -23,7 +23,7 @@ import { ReceivableWithContact } from "@/types/receivables"
 interface ReceivablesSelectProps {
   receivables: ReceivableWithContact[]
   onSelect: (ids: string[]) => void
-  selectedIds: string[]
+  selectedIds: string[] | undefined
 }
 
 export function ReceivablesSelect({
@@ -47,7 +47,7 @@ export function ReceivablesSelect({
           aria-expanded={open}
           className="w-full justify-between"
         >
-          {selectedIds.length > 0 ? (
+          {selectedIds && selectedIds.length > 0 ? (
             <Badge>{selectedIds.length} deudas seleccionadas</Badge>
           ) : (
             "Seleccionar deudas"
@@ -68,18 +68,18 @@ export function ReceivablesSelect({
               <CommandItem
                 key={receivable.id}
                 onSelect={() => {
-                  const isSelected = selectedIds.includes(receivable.id)
+                  const isSelected = selectedIds?.includes(receivable.id)
                   onSelect(
                     isSelected
-                      ? selectedIds.filter(id => id !== receivable.id)
-                      : [...selectedIds, receivable.id]
+                      ? selectedIds?.filter(id => id !== receivable.id) || []
+                      : [...(selectedIds || []), receivable.id]
                   )
                 }}
               >
                 <Check
                   className={cn(
                     "mr-2 h-4 w-4",
-                    selectedIds.includes(receivable.id) 
+                    selectedIds?.includes(receivable.id) 
                       ? "opacity-100"
                       : "opacity-0"
                   )}

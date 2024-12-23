@@ -9,7 +9,7 @@ import { UserRole } from "@/lib/constants/roles";
 
 async function getDashboardData() {
   const auth = await session();
-  if (auth?.user?.role?.toUpperCase() !== UserRole.SUPER_ADMIN) {
+  if (auth?.user?.role !== UserRole.ADMIN) {
     return null;
   }
 
@@ -33,7 +33,7 @@ async function getDashboardData() {
           return prisma.activity.findMany({
             take: 5,
             orderBy: { createdAt: 'desc' },
-            include: { user: true, receivable: true }
+            include: { receivable: true }
           });
         }
         return [];

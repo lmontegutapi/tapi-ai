@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { EmailType } from "@/types";
-
+/* 
 export class EmailTemplateManager {
   static async getTemplate(organizationId: string, type: EmailType) {
     const template = await prisma.emailTemplate.findUnique({
@@ -64,4 +64,4 @@ export class EmailTemplateManager {
       throw error;
     }
   }
-}
+} */

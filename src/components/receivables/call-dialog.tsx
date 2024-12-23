@@ -4,7 +4,6 @@
 import { useState } from "react";
 import { Phone, Loader2, XCircle } from "lucide-react";
 import { ReceivableWithContact } from "@/types/receivables";
-import * as Ably from "ably";
 import {
   Dialog,
   DialogContent,
@@ -39,61 +38,7 @@ export function CallDialog({
   const [duration, setDuration] = useState(0);
 
   const handleCall = async () => {
-    try {
-      setStatus("connecting");
-
-      const result = await initiateCall(receivable.id);
-
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-
-      // Conectar con Ably para monitorear la llamada
-      const ably = new Ably.Realtime({
-        key: process.env.NEXT_PUBLIC_ABLY_API_KEY,
-      });
-      const channel = ably.channels.get(result.data?.channelId);
-
-      setStatus("connected");
-
-      // Escuchar eventos de la llamada
-      channel.subscribe("transcript", (message) => {
-        setTranscript((prev) => [...prev, message.data.text]);
-      });
-
-      channel.subscribe("end", () => {
-        setStatus("idle");
-        ably.close();
-        toast({
-          title: "Llamada finalizada",
-          description: "La llamada ha terminado correctamente",
-        });
-        setTimeout(() => onOpenChange(false), 2000);
-      });
-
-      // Actualizar duración
-      const interval = setInterval(() => {
-        setDuration((prev) => prev + 1);
-      }, 1000);
-
-      channel.subscribe("error", () => {
-        clearInterval(interval);
-        setStatus("failed");
-        ably.close();
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Ocurrió un error durante la llamada",
-        });
-      });
-    } catch (error) {
-      setStatus("failed");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo iniciar la llamada",
-      });
-    }
+    console.log("Llamando a", receivable.contact.phone);
   };
 
   const formatTime = (seconds: number) => {

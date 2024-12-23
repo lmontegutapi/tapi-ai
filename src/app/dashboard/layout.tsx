@@ -26,7 +26,7 @@ export default async function DashboardLayout({
   }
 
   // Si es SUPER_ADMIN, redirigir al panel de admin
-  if (auth.user.role === UserRole.SUPER_ADMIN) {
+  if (auth.user.role === UserRole.ADMIN) {
     redirect("/admin");
   }
 

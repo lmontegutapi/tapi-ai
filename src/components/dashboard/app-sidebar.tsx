@@ -63,13 +63,6 @@ const data = {
       icon: Phone,
       isActive: true,
       allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
-    },    
-    {
-      title: "Agentes",
-      url: "/dashboard/agents",
-      icon: Bot,
-      allowedRoles: [UserRole.OWNER, UserRole.ADMIN],
-      isActive: true,
     },
     {
       title: "Configuración",

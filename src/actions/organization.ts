@@ -18,7 +18,7 @@ function transformNameToSlug(name: string) {
   return name.toLowerCase().replace(/\s+/g, '-')
 }
 
-/* export async function createOrganization({
+export async function createOrganization({
   name,
   slug,
   userId,
@@ -42,6 +42,8 @@ function transformNameToSlug(name: string) {
     if(!slug) {
       slug = transformNameToSlug(name)
     }
+
+    const sessionLocal = await session()
 
     // Crear organización usando el plugin de better-auth
     const organization = await auth.api.createOrganization({
@@ -113,9 +115,9 @@ export async function setActiveOrganization(organizationId: string): Promise<any
       organizationId: organizationId
     }
   })
-} */
+}
 
-/* export async function getOrganizationByUserId(userId: string) {
+export async function getOrganizationByUserId(userId: string) {
   const data = await session()
 
   if(!data) {
@@ -124,7 +126,7 @@ export async function setActiveOrganization(organizationId: string): Promise<any
 
   const organization = await auth.api.getFullOrganization({
     query: {
-      organizationId: data?.session?.activeOrganizationId
+      organizationId: data?.session?.activeOrganizationId || undefined
     },
     headers: headers()
   })
@@ -134,7 +136,7 @@ export async function setActiveOrganization(organizationId: string): Promise<any
   }
 
   return organization
-} */
+}
 
 interface CreateOrganizationWithOwnerProps {
   name: string;

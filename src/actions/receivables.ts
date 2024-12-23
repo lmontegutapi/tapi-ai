@@ -187,7 +187,7 @@ const paymentSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function initiateCall(receivableId: string, campaignId?: string, isManual: boolean = false, phoneNumber: string) {
+export async function initiateCall(receivableId: string, campaignId?: string, isManual: boolean = false, phoneNumber?: string) {
   try {
     const session = await serverSession();
     if (!session) {
@@ -573,7 +573,7 @@ export async function deleteReceivable(receivableId: string) {
     const receivable = await prisma.receivable.findFirst({
       where: {
         id: receivableId,
-        organizationId: session.session.activeOrganizationId,
+        organizationId: session.session.activeOrganizationId || "",
       },
     });
 

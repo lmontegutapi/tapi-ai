@@ -8,7 +8,9 @@ import { z } from "zod";
 import { headers } from "next/headers";
 import type { Organization, Campaign } from "@prisma/client";
 
-// Schema de validación
+
+type CampaignInput = z.infer<typeof campaignSchema>;
+
 const campaignSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   context: z.string().min(10, "El contexto debe tener al menos 10 caracteres"),
@@ -16,45 +18,35 @@ const campaignSchema = z.object({
   welcomeMessage: z.string().min(10, "El mensaje debe tener al menos 10 caracteres"),
   startDate: z.string(),
   endDate: z.string(),
-  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
-  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido"),
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   callsPerUser: z.coerce.number().min(1).max(10),
-  agentId: z.string().min(1, "Debes seleccionar un agente"),
-  voiceType: z.enum(["NEUTRAL", "FRIENDLY", "PROFESSIONAL"]).default("NEUTRAL"),
+  voiceId: z.string().min(1, "Debes seleccionar una voz"),
+  voiceName: z.string(),
+  voicePreviewUrl: z.string().optional(),
   receivableIds: z.array(z.string()).optional(),
 });
-
-type CampaignInput = z.infer<typeof campaignSchema>;
 
 export async function createCampaign(data: z.infer<typeof campaignSchema>) {
   try {
     const session = await sessionServer()
-    if (!session) {
-      return { success: false, error: "No autorizado" }
-    }
+    if (!session) return { success: false, error: "No autorizado" }
 
     const organization = await prisma.organization.findFirst({
       where: {
-        members: {
-          some: {
-            userId: session.user.id
-          }
-        }
+        members: { some: { userId: session.user.id } }
       }
     })
 
-    if (!organization) {
-      return { success: false, error: "Organización no encontrada" }
-    }
+    if (!organization) return { success: false, error: "Organización no encontrada" }
 
-    // Si no se especifican deudas, obtener todas las deudas abiertas
     let receivableIds = data.receivableIds;
-    if (!receivableIds || receivableIds.length === 0) {
+    if (!receivableIds?.length) {
       const allReceivables = await prisma.receivable.findMany({
         where: {
           organizationId: organization.id,
           status: "OPEN",
-          campaignId: null // Solo deudas que no estén en otra campaña
+          campaignId: null
         },
         select: { id: true }
       });
@@ -73,10 +65,11 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
         startTime: data.startTime,
         endTime: data.endTime,
         callsPerUser: data.callsPerUser,
-        agentId: data.agentId,
+        voiceId: data.voiceId,
+        voiceName: data.voiceName,
+        voicePreviewUrl: data.voicePreviewUrl,
         totalCalls: receivableIds.length * data.callsPerUser,
         status: "DRAFT",
-        voiceType: data.voiceType ?? "NEUTRAL",
         receivables: {
           connect: receivableIds.map(id => ({ id }))
         }
@@ -84,109 +77,63 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
     })
 
     revalidatePath('/dashboard/campaigns')
-
-    return {
-      success: true,
-      data: campaign
-    }
+    return { success: true, data: campaign }
   } catch (error) {
     console.error('Error creating campaign:', error)
-    return {
-      success: false,
-      error: "Error al crear la campaña"
-    }
+    return { success: false, error: "Error al crear la campaña" }
   }
 }
 
 export async function updateCampaign(
   campaignId: string,
-  input: Partial<CampaignInput>
+  input: Partial<z.infer<typeof campaignSchema>>
 ) {
   try {
     const session = await sessionServer();
-    if (!session) {
-      return {
-        success: false,
-        error: "No autorizado",
-      };
-    }
+    if (!session) return { success: false, error: "No autorizado" };
 
-    // Verificar que la campaña existe y pertenece a la organización
     const campaign = await prisma.campaign.findFirst({
       where: {
         id: campaignId,
         organization: {
-          members: {
-            some: {
-              userId: session.user.id,
-            },
-          },
-        },
-      },
+          members: { some: { userId: session.user.id } }
+        }
+      }
     });
 
-    if (!campaign) {
-      return {
-        success: false,
-        error: "Campaña no encontrada",
-      };
-    }
+    if (!campaign) return { success: false, error: "Campaña no encontrada" };
 
-    // Validar input parcial
     const validatedData = campaignSchema.partial().parse(input);
 
-    // Actualizar campaña
     const updatedCampaign = await prisma.campaign.update({
-      where: {
-        id: campaignId,
-      },
-      data: validatedData,
+      where: { id: campaignId },
+      data: {
+        ...validatedData,
+        startDate: input.startDate ? new Date(input.startDate) : undefined,
+        endDate: input.endDate ? new Date(input.endDate) : undefined,
+      }
     });
 
-    // Si se actualizaron los receivables, actualizarlos
-    if (input.receivableIds) {
-      // Primero desvinculamos los existentes
-      await prisma.receivable.updateMany({
-        where: {
-          campaignId: campaignId,
-        },
-        data: {
-          campaignId: null,
-        },
-      });
-
-      // Luego vinculamos los nuevos
-      await prisma.receivable.updateMany({
-        where: {
-          id: {
-            in: input.receivableIds,
-          },
-        },
-        data: {
-          campaignId: campaignId,
-        },
-      });
+    if (input.receivableIds?.length) {
+      await prisma.$transaction([
+        prisma.receivable.updateMany({
+          where: { campaignId },
+          data: { campaignId: null }
+        }),
+        prisma.receivable.updateMany({
+          where: { id: { in: input.receivableIds } },
+          data: { campaignId }
+        })
+      ]);
     }
 
     revalidatePath("/dashboard/campaigns");
-
-    return {
-      success: true,
-      data: updatedCampaign,
-    };
+    return { success: true, data: updatedCampaign };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: "Datos inválidos",
-        errors: error.errors,
-      };
+      return { success: false, error: "Datos inválidos", errors: error.errors };
     }
-
-    return {
-      success: false,
-      error: "Error al actualizar la campaña",
-    };
+    return { success: false, error: "Error al actualizar la campaña" };
   }
 }
 

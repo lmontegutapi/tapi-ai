@@ -1,0 +1,624 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String            @id @default(cuid())
+  name            String
+  email           String           
+  emailVerified   Boolean
+  image           String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  banned          Boolean?
+  banReason       String?
+  banExpires      DateTime?
+  role            String?
+  accounts        Account[]
+  invitations     Invitation[]
+  members         Member[]
+  sessions        Session[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id @default(cuid())
+  expiresAt            DateTime
+  token                String   @unique
+  createdAt            DateTime
+  updatedAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  activeOrganizationId String?
+  impersonatedBy       String?
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model Organization {
+  id                String              @id @default(cuid())
+  name              String
+  slug              String?             @unique
+  logo              String?
+  createdAt         DateTime
+  metadata          String?
+  activity          Activity[]
+  agent             Agent[]
+  agentPerformance  AgentPerformance[]
+  analyticsEvent    AnalyticsEvent[]
+  campaigns         Campaign[]
+  campaignMetrics   CampaignMetrics[]
+  collectionMetrics CollectionMetrics[]
+  contact           Contact[]
+  emailTemplate     EmailTemplate[]
+  invitations       Invitation[]
+  invoice           Invoice[]
+  members           Member[]
+  paymentLink       PaymentLink[]
+  paymentMethod     PaymentMethod[]
+  receivables       Receivable[]
+  emailPreference   EmailPreference[]
+
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String?
+  createdAt      DateTime
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitation")
+}
+
+model Receivable {
+  id             String           @id @default(cuid())
+  organizationId String
+  contactId      String
+  paymentId      String?
+  amountCents    Int
+  currency       String?          @default("MXN")
+  notes          String?
+  dueDate        DateTime
+  status         ReceivableStatus
+  isPastDue      Boolean          @default(false)
+  isOpen         Boolean          @default(true)
+  campaignId     String?
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  activity       Activity[]
+  calls          Call[]
+  paymentPromise PaymentPromise[]
+  campaign       Campaign?        @relation(fields: [campaignId], references: [id])
+  contact        Contact          @relation(fields: [contactId], references: [id])
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+
+  @@index([paymentId])
+  @@map("receivable")
+}
+
+model Campaign {
+  id String @id @default(cuid())
+  name String
+  organizationId String
+  startDate DateTime
+  endDate DateTime
+  startTime String
+  endTime String
+  callsPerUser Int
+  status CampaignStatus @default(DRAFT)
+  context String
+  objective String
+  welcomeMessage String
+  voiceId String? // ID de la voz en ElevenLabs
+  voiceName String? // Nombre de la voz seleccionada
+  voicePreviewUrl String? // URL del preview de la voz
+  metadata Json?
+  totalCalls Int
+  completedCalls Int @default(0)
+  successfulCalls Int @default(0)
+  failedCalls Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  automation CampaignAutomation?
+  campaignMetrics CampaignMetrics[]
+  paymentPromise PaymentPromise[]
+  receivables Receivable[]
+  contacts Contact[] @relation("campaign_to_contact")
+  calls Call[]
+
+  @@map("campaign")
+}
+
+model Agent {
+  id               String             @id @default(cuid())
+  organizationId   String
+  name             String
+  description      String?
+  elevenlabsId     String
+  voiceType        String
+  voiceId          String
+  voiceName        String
+  voiceLanguage    String
+  voiceGender      String
+  voiceAge         String
+  voiceStyle       String
+  voicePitch       String
+  voiceSpeed       String
+  voiceStability   String
+  voiceSimilarity  String
+  isActive         Boolean            @default(true)
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  agentPerformance AgentPerformance[]
+
+  @@map("agent")
+}
+
+model CampaignAutomation {
+  id         String   @id @default(cuid())
+  campaignId String   @unique
+  isActive   Boolean  @default(true)
+  beforeDays Int?
+  onDueDate  Boolean  @default(false)
+  afterDays  Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@map("campaign_automation")
+}
+
+model Contact {
+  id             String         @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  rfc            String?
+  address        String?
+  paymentTerms   Int?
+  identifier     String?
+  metadata       Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  contactPhone   ContactPhone[]
+  invoices       Invoice[]
+  receivables    Receivable[]
+  campaigns      Campaign[]     @relation("campaign_to_contact")
+
+  @@index([identifier])
+  @@map("contact")
+}
+
+model Call {
+  id             String          @id @default(cuid())
+  campaignId     String?
+  receivableId   String
+  status         CallStatus
+  duration       Int?
+  recording      String?
+  transcript     String?
+  hasPromise     Boolean         @default(false)
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  campaign       Campaign?       @relation(fields: [campaignId], references: [id])
+  receivable     Receivable      @relation(fields: [receivableId], references: [id])
+  promiseDetails PaymentPromise?
+
+  @@map("call")
+}
+
+model Rate_limit {
+  id          String  @id
+  key         String?
+  count       Int?
+  lastRequest Int?
+
+  @@map("rate_limit")
+}
+
+model EmailTemplate {
+  id             String       @id @default(cuid())
+  name           String
+  type           EmailType
+  subject        String
+  bodyTemplate   String
+  variables      Json
+  isActive       Boolean      @default(true)
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, type])
+  @@map("email_template")
+}
+
+model EmailPreference {
+  id        String    @id @default(cuid())
+  organizationId String
+  emailType EmailType
+  isEnabled Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, emailType])
+  @@map("email_preference")
+}
+
+model Invoice {
+  id             String          @id @default(cuid())
+  invoiceNumber  String
+  organizationId String
+  clientId       String
+  amountCents    Int
+  currency       String?         @default("MXN")
+  dueDate        DateTime
+  emissionDate   DateTime
+  status         InvoiceStatus
+  dueInDays      Int
+  metadata       Json?
+  paymentDate    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  client         Contact         @relation(fields: [clientId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  items          InvoiceItem[]
+  paymentLink    PaymentLink[]
+  paymentMethod  PaymentMethod[] @relation("invoice_to_payment_method")
+
+  @@map("invoice")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitPrice   Int
+  total       Int
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoice_item")
+}
+
+model PaymentLink {
+  id                  String               @id @default(cuid())
+  publicId            String               @unique
+  organizationId      String
+  invoiceId           String?
+  amountCents         Int
+  currency            String?              @default("MXN")
+  status              PaymentLinkStatus
+  expiresAt           DateTime?
+  metadata            Json?
+  accessCount         Int                  @default(0)
+  lastAccessedAt      DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  invoice             Invoice?             @relation(fields: [invoiceId], references: [id])
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  paymentTransactions PaymentTransaction[]
+  paymentMethods      PaymentMethod[]      @relation("payment_link_to_payment_method")
+
+  @@map("payment_link")
+}
+
+model PaymentMethod {
+  id             String        @id @default(cuid())
+  type           PaymentType
+  name           String
+  organizationId String
+  isActive       Boolean       @default(true)
+  credentials    Json?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  invoices       Invoice[]     @relation("invoice_to_payment_method")
+  paymentLinks   PaymentLink[] @relation("payment_link_to_payment_method")
+
+  @@map("payment_method")
+}
+
+model PaymentTransaction {
+  id               String            @id @default(cuid())
+  paymentLinkId    String
+  amountCents      Int
+  currency         String?           @default("MXN")
+  status           TransactionStatus
+  paymentMethod    PaymentType
+  paymentReference String?
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  paymentLink      PaymentLink       @relation(fields: [paymentLinkId], references: [id])
+
+  @@map("payment_transaction")
+}
+
+model CampaignMetrics {
+  id                  String       @id @default(cuid())
+  date                DateTime
+  campaignId          String
+  organizationId      String
+  totalCalls          Int          @default(0)
+  answeredCalls       Int          @default(0)
+  missedCalls         Int          @default(0)
+  avgCallDuration     Float        @default(0)
+  totalPromises       Int          @default(0)
+  promisedAmountCents Int          @default(0)
+  actualPaymentsCents Int          @default(0)
+  conversionRate      Float        @default(0)
+  bestCallTimes       Json?
+  metadata            Json?
+  campaign            Campaign     @relation(fields: [campaignId], references: [id])
+  organization        Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([date, campaignId])
+  @@map("campaign_metrics")
+}
+
+model AgentPerformance {
+  id                  String       @id @default(cuid())
+  date                DateTime
+  agentId             String
+  organizationId      String
+  totalCalls          Int          @default(0)
+  successfulCalls     Int          @default(0)
+  avgCallDuration     Float        @default(0)
+  totalPromises       Int          @default(0)
+  promisedAmountCents Int          @default(0)
+  conversionRate      Float        @default(0)
+  avgResponseTime     Float        @default(0)
+  metadata            Json?
+  agent               Agent        @relation(fields: [agentId], references: [id])
+  organization        Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([date, agentId])
+  @@map("agent_performance")
+}
+
+model PaymentPromise {
+  id                   String        @id @default(cuid())
+  receivableId         String
+  callId               String        @unique
+  campaignId           String
+  amountCents          Int
+  currency             String?       @default("MXN")
+  promisedDate         DateTime
+  status               PromiseStatus @default(PENDING)
+  fulfilledAmountCents Int?
+  fulfilledDate        DateTime?
+  metadata             Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  call                 Call          @relation(fields: [callId], references: [id])
+  campaign             Campaign      @relation(fields: [campaignId], references: [id])
+  receivable           Receivable    @relation(fields: [receivableId], references: [id])
+
+  @@map("payment_promise")
+}
+
+model CollectionMetrics {
+  id                   String       @id @default(cuid())
+  date                 DateTime
+  organizationId       String
+  totalReceivables     Int          @default(0)
+  collectedAmountCents Int          @default(0)
+  overdueAmountCents   Int          @default(0)
+  pendingAmountCents   Int          @default(0)
+  promisedAmountCents  Int          @default(0)
+  collectionRate       Float        @default(0)
+  dso                  Int          @default(0)
+  metadata             Json?
+  organization         Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([date, organizationId])
+  @@map("collection_metrics")
+}
+
+model AnalyticsEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  eventType      String
+  entityType     String
+  entityId       String
+  data           Json
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, eventType])
+  @@index([entityType, entityId])
+  @@map("analytics_event")
+}
+
+model Activity {
+  id             String       @id @default(cuid())
+  action         String
+  createdAt      DateTime     @default(now())
+  organizationId String
+  userId         String
+  receivableId   String?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  receivable     Receivable?  @relation(fields: [receivableId], references: [id])
+
+  @@index([organizationId])
+  @@index([receivableId])
+
+  @@map("activity")
+}
+
+model ContactPhone {
+  id          String    @id @default(cuid())
+  contactId   String
+  phone       String
+  type        PhoneType
+  description String?
+  isPrimary   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("contact_phone")
+}
+
+enum ReceivableStatus {
+  OPEN
+  CLOSED
+  OVERDUE
+  PENDING_DUE
+}
+
+enum PromiseStatus {
+  PENDING
+  FULFILLED
+  PARTIALLY_FULFILLED
+  BROKEN
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum ContactStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum CallStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NO_ANSWER
+  BUSY
+  CANCELLED
+}
+
+enum EmailType {
+  WELCOME
+  CAMPAIGN_CREATED
+  CAMPAIGN_SUMMARY
+  PAYMENT_PROMISE
+  GOAL_REACHED
+  INVITATION
+  CUSTOM
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  OVERDUE
+  PAID
+  CANCELLED
+}
+
+enum PaymentType {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  MERCADO_PAGO
+  UALA
+  MODO
+  PERSONAL_PAY
+  OTHER
+}
+
+enum PaymentLinkStatus {
+  ACTIVE
+  EXPIRED
+  COMPLETED
+  CANCELLED
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PhoneType {
+  MAIN
+  MOBILE
+  WORK
+  RELATIVE
+  OTHER
+}

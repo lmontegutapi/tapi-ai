@@ -17,8 +17,8 @@ import sendgrid from "@sendgrid/mail";
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY!)
 const prisma = new PrismaClient();
 
-const from = "Cobranzas AI <onboarding@cobranza.tapi.la>";
-const to = "onboarding@cobranza.tapi.la";
+const from = "Cobranzas AI <lmontegu@auntap.com>";
+//const to = "onboarding@cobranza.tapi.la";
 // Función auxiliar para obtener la organización activa
 async function getActiveOrganization(userId: string) {
   // Buscar la primera organización donde el usuario es miembro usando el modelo Member
@@ -53,7 +53,7 @@ export const auth = betterAuth({
     async sendVerificationEmail({ user, url }) {
       const res = await sendgrid.send({
         from,
-        to: to || user.email,
+        to: user.email,
         subject: "Verifica tu correo electrónico",
         html: `<a href="${url}">Verifica tu correo electrónico</a>`,
       });

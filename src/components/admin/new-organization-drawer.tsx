@@ -60,7 +60,7 @@ export function NewOrganizationDrawer() {
         name: values.ownerName,
         email: values.ownerEmail,
         password: values.ownerPassword,
-        role: "ADMIN",
+        role: "owner",
       })
 
       const org = await authClient.organization.create({

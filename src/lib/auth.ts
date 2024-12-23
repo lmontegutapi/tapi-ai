@@ -50,6 +50,8 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
+    enabled: true,
+    autoSignInAfterVerification: true,
     async sendVerificationEmail({ user, url }) {
       const res = await sendgrid.send({
         from,
@@ -63,6 +65,7 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    resetPasswordTokenExpiresIn: 60 * 60 * 24 * 30, // 30 days
     async sendResetPassword({ user, url }) {
       await sendgrid.send({
         from,
@@ -99,7 +102,8 @@ export const auth = betterAuth({
                   }/accept-invitation/${data.id}`,
           })),
         });
-        console.log(res, data.email);
+
+        console.log("Invitation sent", res, data.email)
       },
       allowUserToCreateOrganization: async (user) => {
         const userRole = await prismaClient.user.findUnique({
@@ -125,6 +129,10 @@ export const auth = betterAuth({
           try {
             let organization = null;
             organization = await getActiveOrganization(session.userId);
+
+            if(!organization) {
+              throw new Error("No organization found for user");
+            }
 
             return {
               data: {

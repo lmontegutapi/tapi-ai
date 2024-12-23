@@ -42,10 +42,12 @@ export function UsersList() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   
-  const { data: users = [] } = useQuery({
+  const { data: users } = useQuery({
     queryKey: ['users'],
     queryFn: getUsers
   })
+
+  console.log("users", users)
 
   const table = useReactTable<UserWithMembers>({
     data: users,

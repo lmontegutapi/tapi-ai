@@ -91,7 +91,7 @@ export default function InvitationPage() {
 			{invitation ? (
 				<Card className="w-full max-w-md">
 					<CardHeader>
-						<CardTitle>Organization Invitation</CardTitle>
+						<CardTitle>Invitación a la organización</CardTitle>
 						<CardDescription>
 							Haz click en aceptar para unirte a la organización
 						</CardDescription>

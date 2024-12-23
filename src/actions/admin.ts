@@ -5,7 +5,8 @@ import { session } from "@/lib/auth-server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { UserRole } from "@/lib/constants/roles";
-
+import { auth as authClient } from "@/lib/auth";
+import { headers } from "next/headers";
 const createOrganizationSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -18,9 +19,9 @@ export async function createOrganizationWithAdmin(
 ) {
   const auth = await session();
   
-  /* if (!auth?.user || auth.user. !== UserRole.SUPER_ADMIN) {
+  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
     throw new Error("No autorizado");
-  } */
+  }
 
   const validated = createOrganizationSchema.parse(data);
 
@@ -57,6 +58,22 @@ export async function createOrganizationWithAdmin(
         },
       });
 
+      await authClient.api.setActiveOrganization({
+        body: {
+          organizationId: organization.id,
+        },
+        headers: headers()
+      });
+
+      await authClient.api.createInvitation({
+        body: {
+          email: validated.adminEmail,
+          organizationId: organization.id,
+          role: "owner",
+        },
+        headers: headers()
+      });
+
       return { organization, owner };
     });
 
@@ -71,9 +88,9 @@ export async function createOrganizationWithAdmin(
 export async function getOrganizations() {
   const auth = await session();
   
-  /* if (!auth?.user || auth.user.role !== UserRole.SUPER_ADMIN) {
-    throw new Error("No autorizado");
-  } */
+      if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+        throw new Error("No autorizado");
+      }
 
   const organizations = await prisma.organization.findMany({
     include: {
@@ -97,9 +114,9 @@ export async function getOrganizations() {
 export async function getUsers() {
   const auth = await session();
   
-/*   if (!auth?.user || auth.user.role !== UserRole.SUPER_ADMIN) {
+  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
     throw new Error("No autorizado");
-  } */
+  }
 
   const users = await prisma.user.findMany({
     include: {

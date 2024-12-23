@@ -55,7 +55,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
     try {
       const response = await inviteTeamMember({
         email: data.email,
-        role: data.role as "ADMIN" | "MEMBER" | "VIEWER",
+        role: data.role as "owner" | "member" | "viewer",
       })
       if (response.success) {
         toast({

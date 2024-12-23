@@ -38,7 +38,7 @@ export const WelcomeEmailTemplate = ({
             </Text>
             <Button
               className="bg-[#000000] rounded text-white text-[12px] font-semibold no-underline text-center px-5 py-3 my-[10px] mx-0"
-              href="https://tudominio.com/dashboard"
+              href="https://tapi-ai.vercel.app/dashboard"
             >
               Ir al Dashboard
             </Button>

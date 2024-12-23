@@ -115,7 +115,7 @@ export default function Component() {
 					</form>
 				</CardContent>
 				<CardFooter className="flex justify-center">
-					<Link href="/login">
+					<Link href="/sign-in">
 						<Button variant="link" className="px-0">
 							Volver a iniciar sesión
 						</Button>

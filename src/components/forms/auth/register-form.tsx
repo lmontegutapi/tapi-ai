@@ -227,7 +227,7 @@ export function RegisterForm() {
 
       <div className="flex justify-center items-center gap-2">
         <p className="text-sm text-muted-foreground">¿Ya tienes una cuenta?</p>
-        <Link href="/login"> Iniciar sesión </Link>
+        <Link href="/sign-in"> Iniciar sesión </Link>
       </div>
     </Form>
   );

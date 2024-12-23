@@ -15,7 +15,7 @@ const organizationSchema = z.object({
 
 const teamMemberSchema = z.object({
   email: z.string().email("Email inválido"),
-  role: z.enum(["ADMIN", "MEMBER", "VIEWER"])
+  role: z.enum(["owner", "member", "viewer"])
 })
 
 const emailPreferenceSchema = z.object({
@@ -76,7 +76,7 @@ export async function updateOrganizationSettings(
         members: {
           some: {
             userId: session.session.userId,
-            role: "ADMIN"
+            role: "owner"
           }
         }
       }
@@ -124,7 +124,7 @@ export async function inviteTeamMember(
         members: {
           some: {
             userId: session.session.userId,
-            role: "ADMIN"
+            role: "owner"
           }
         }
       }
@@ -173,7 +173,7 @@ export async function removeTeamMember(memberId: string) {
         members: {
           some: {
             userId: session.session.userId,
-            role: "ADMIN"
+            role: "owner"
           }
         }
       }

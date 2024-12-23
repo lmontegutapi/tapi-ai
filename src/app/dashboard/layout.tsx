@@ -22,7 +22,7 @@ export default async function DashboardLayout({
   
   // Si no hay sesión, redirigir a login
   if (!auth?.user) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   // Si es SUPER_ADMIN, redirigir al panel de admin

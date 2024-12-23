@@ -120,7 +120,7 @@ export function LoginForm() {
         <p className="text-sm text-muted-foreground">
           ¿No tienes una cuenta?
         </p>
-        <Link href="/register"> Registrarse </Link>
+        <Link href="/sign-up"> Registrarse </Link>
       </div>
     </Form>
   );

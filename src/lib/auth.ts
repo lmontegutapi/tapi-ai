@@ -11,16 +11,14 @@ import { prisma as prismaClient } from "@/lib/db";
 import { UserRole } from "./constants/roles";
 import { generateSlug } from "./utils";
 import { authClient } from "./auth-client";
-import { ResendTransport } from '@documenso/nodemailer-resend';
-import { createTransport } from 'nodemailer';
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY!)
 const prisma = new PrismaClient();
 
-const from = "Cobranzas AI <onboarding@cobranzasai.com>";
-const to = "onboarding@cobranzasai.com";
+const from = "Cobranzas AI <onboarding@cobranza.tapi.la>";
+const to = "onboarding@cobranza.tapi.la";
 // Función auxiliar para obtener la organización activa
 async function getActiveOrganization(userId: string) {
   // Buscar la primera organización donde el usuario es miembro usando el modelo Member

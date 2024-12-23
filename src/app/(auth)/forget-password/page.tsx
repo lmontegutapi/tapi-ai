@@ -46,7 +46,7 @@ export default function Component() {
 			<main className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
 				<Card className="w-[350px]">
 					<CardHeader>
-						<CardTitle>Check your email</CardTitle>
+						<CardTitle>Revisa tu correo</CardTitle>
 						<CardDescription>
 							Te hemos enviado un enlace para restablecer tu contraseña a tu correo.
 						</CardDescription>
@@ -79,7 +79,7 @@ export default function Component() {
 			<div className="absolute pointer-events-none inset-0 flex items-center justify-center dark:bg-black bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
 			<Card className="w-[350px]">
 				<CardHeader>
-					<CardTitle>Forgot password</CardTitle>
+					<CardTitle>Olvidaste tu contraseña</CardTitle>
 					<CardDescription>
 						Introduce tu correo electrónico para restablecer tu contraseña
 					</CardDescription>

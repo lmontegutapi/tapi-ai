@@ -110,6 +110,10 @@ export function LoginForm() {
         </Button>
       </form>
 
+      <div className="flex justify-center items-center gap-2 mt-2">
+        <Link href="/forget-password" className="text-sm text-muted-foreground"> Olvidaste tu contraseña? </Link>
+      </div>
+
       <Separator className="my-4" />
 
       <div className="flex justify-center items-center gap-2">

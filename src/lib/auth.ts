@@ -11,7 +11,12 @@ import { prisma as prismaClient } from "@/lib/db";
 import { UserRole } from "./constants/roles";
 import { generateSlug } from "./utils";
 import { authClient } from "./auth-client";
+import { ResendTransport } from '@documenso/nodemailer-resend';
+import { createTransport } from 'nodemailer';
+import { render } from "@react-email/components";
+import sendgrid from "@sendgrid/mail";
 
+sendgrid.setApiKey(process.env.SENDGRID_API_KEY!)
 const prisma = new PrismaClient();
 
 const from = "Cobranzas AI <onboarding@cobranzasai.com>";
@@ -48,7 +53,7 @@ export const auth = betterAuth({
   },
   emailVerification: {
     async sendVerificationEmail({ user, url }) {
-      const res = await resend.emails.send({
+      const res = await sendgrid.send({
         from,
         to: to || user.email,
         subject: "Verifica tu correo electrónico",
@@ -61,14 +66,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     async sendResetPassword({ user, url }) {
-      await resend.emails.send({
+      await sendgrid.send({
         from,
         to: user.email,
         subject: "Restablece tu contraseña",
-        react: reactResetPasswordEmail({
+        html: await render(reactResetPasswordEmail({
           username: user.email,
           resetLink: url,
-        }),
+        })),
       });
     },
   },
@@ -78,11 +83,11 @@ export const auth = betterAuth({
   plugins: [
     organization({
       async sendInvitationEmail(data) {
-        const res = await resend.emails.send({
+        const res = await sendgrid.send({
           from,
           to: data.email,
           subject: "Te han invitado a unirte a una organización",
-          react: reactInvitationEmail({
+          html: await render(reactInvitationEmail({
             username: data.email,
             invitedByUsername: data.inviter.user.name,
             invitedByEmail: data.inviter.user.email,
@@ -94,7 +99,7 @@ export const auth = betterAuth({
                     process.env.BETTER_AUTH_URL ||
                     "https://demo.better-auth.com"
                   }/accept-invitation/${data.id}`,
-          }),
+          })),
         });
         console.log(res, data.email);
       },

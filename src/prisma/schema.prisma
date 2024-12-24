@@ -81,9 +81,8 @@ model Organization {
   logo              String?
   createdAt         DateTime
   metadata          String?
-  activity          Activity[]
-  agent             Agent[]
   agentPerformance  AgentPerformance[]
+  activity          Activity[]
   analyticsEvent    AnalyticsEvent[]
   campaigns         Campaign[]
   campaignMetrics   CampaignMetrics[]
@@ -167,6 +166,7 @@ model Campaign {
   context String
   objective String
   welcomeMessage String
+  agentId String // ID del agente en ElevenLabs
   voiceId String? // ID de la voz en ElevenLabs
   voiceName String? // Nombre de la voz seleccionada
   voicePreviewUrl String? // URL del preview de la voz
@@ -187,33 +187,6 @@ model Campaign {
   calls Call[]
 
   @@map("campaign")
-}
-
-model Agent {
-  id               String             @id @default(cuid())
-  organizationId   String
-  name             String
-  description      String?
-  elevenlabsId     String
-  voiceType        String
-  voiceId          String
-  voiceName        String
-  voiceLanguage    String
-  voiceGender      String
-  voiceAge         String
-  voiceStyle       String
-  voicePitch       String
-  voiceSpeed       String
-  voiceStability   String
-  voiceSimilarity  String
-  isActive         Boolean            @default(true)
-  metadata         Json?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  organization     Organization       @relation(fields: [organizationId], references: [id])
-  agentPerformance AgentPerformance[]
-
-  @@map("agent")
 }
 
 model CampaignAutomation {
@@ -430,8 +403,8 @@ model CampaignMetrics {
 model AgentPerformance {
   id                  String       @id @default(cuid())
   date                DateTime
-  agentId             String
   organizationId      String
+  agentId             String
   totalCalls          Int          @default(0)
   successfulCalls     Int          @default(0)
   avgCallDuration     Float        @default(0)
@@ -440,10 +413,9 @@ model AgentPerformance {
   conversionRate      Float        @default(0)
   avgResponseTime     Float        @default(0)
   metadata            Json?
-  agent               Agent        @relation(fields: [agentId], references: [id])
   organization        Organization @relation(fields: [organizationId], references: [id])
 
-  @@unique([date, agentId])
+  @@unique([date])
   @@map("agent_performance")
 }
 

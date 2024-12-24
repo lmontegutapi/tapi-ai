@@ -15,6 +15,7 @@ import { VoiceSelector } from "./voice-selector"
 import { CampaignAutomationForm } from "./automation-form"
 import { ReceivablesSelect } from "../receivables/receivables-select"
 import { ReceivableWithContact } from "@/types/receivables"
+import { AgentSelector } from "./agent-selector"
 
 const campaignSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
@@ -26,6 +27,7 @@ const campaignSchema = z.object({
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   callsPerUser: z.coerce.number().min(1).max(10),
+  agentId: z.string().min(1, "Debes seleccionar un agente"),
   voiceId: z.string().min(1, "Debes seleccionar una voz"),
   voiceName: z.string(),
   voicePreviewUrl: z.string().optional(),
@@ -52,6 +54,7 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
       startTime: campaign?.startTime ?? "09:00",
       endTime: campaign?.endTime ?? "18:00",
       callsPerUser: campaign?.callsPerUser ?? 3,
+      agentId: campaign?.agentId ?? "",
       voiceId: campaign?.voiceId ?? "",
       voiceName: campaign?.voiceName ?? "",
       voicePreviewUrl: campaign?.voicePreviewUrl ?? "",
@@ -61,7 +64,7 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 w-full">
         <ScrollArea className="h-[calc(100vh-200px)]">
           <div className="space-y-6">
             <FormField
@@ -138,6 +141,25 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
 
             <FormField
               control={form.control}
+              name="agentId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Agente</FormLabel>
+                  <FormControl>
+                    <AgentSelector
+                      onSelect={({ id }) => {
+                        form.setValue("agentId", id)
+                      }}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="voiceId"
               render={({ field }) => (
                 <FormItem>
@@ -148,7 +170,8 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                         form.setValue("voiceId", voice.id)
                         form.setValue("voiceName", voice.name)
                         form.setValue("voicePreviewUrl", voice.previewUrl)
-                      }} 
+                      }}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -230,15 +253,15 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
               )}
             />
 
-            <CampaignAutomationForm />
+            {/* <CampaignAutomationForm /> */}
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-4">
-          <Button variant="outline" type="button">
+        <div className="flex justify-between gap-4">
+          <Button variant="outline" type="button" className="w-full">
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

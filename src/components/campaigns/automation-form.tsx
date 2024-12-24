@@ -20,7 +20,7 @@ export function CampaignAutomationForm() {
   ]);
 
   return (
-    <Card>
+    <Card className="border-0 p-0 shadow-none">
       <CardHeader>
         <CardTitle>Automatización de llamadas</CardTitle>
         <CardDescription>

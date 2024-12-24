@@ -62,7 +62,7 @@ export function CampaignDrawer({ campaign, receivables, trigger }: CampaignDrawe
           </Button>
         )}
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px]">
+      <SheetContent className="max-w-max min-w-[540px]">
         <SheetHeader>
           <SheetTitle>
             {campaign ? "Editar Campaña" : "Nueva Campaña"}

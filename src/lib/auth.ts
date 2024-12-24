@@ -59,7 +59,6 @@ export const auth = betterAuth({
         subject: "Verifica tu correo electrónico",
         html: `<a href="${url}">Verifica tu correo electrónico</a>`,
       });
-      console.log("Email sent", res, user.email);
     },
     sendOnSignUp: true,
   },
@@ -102,8 +101,6 @@ export const auth = betterAuth({
                   }/accept-invitation/${data.id}`,
           })),
         });
-
-        console.log("Invitation sent", res, data.email)
       },
       allowUserToCreateOrganization: async (user) => {
         const userRole = await prismaClient.user.findUnique({

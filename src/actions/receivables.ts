@@ -244,9 +244,7 @@ export async function initiateCall(receivableId: string, campaignId?: string, is
         voiceId: process.env.ELEVENLABS_VOICE_ID!,
         firstMessage: "Hola, ¿cómo estás?",
       });
-
-      console.log("response.data", response.data)
-
+      
       if (response.status !== 200) {
         throw new Error(response.data.error || 'Error al iniciar la llamada');
       }

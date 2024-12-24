@@ -25,23 +25,45 @@ import {
 } from "@/components/ui/table"
 import { columns } from "./organizations-columns"
 import { useQuery } from "@tanstack/react-query"
-import { getOrganizations } from "@/actions/admin"
 import { EmptyOrganizations } from "./empty-organizations"
 import { Organization } from "@prisma/client"
+import { authClient } from "@/lib/auth-client"
+import { TableSkeleton } from "../table-skeleton"
+import { getOrganizations } from "@/actions/admin"
+
+/* async function getOrganizations() {
+  const organizations = await authClient.organization.list()
+
+  const organizationsFullWithMembers = await authClient.organization.getFullOrganization()
+
+  const organizationsWithMembers = organizations.data?.map((organization) => {
+    const organizationFull = organizationsFullWithMembers.data?.find((o: any) => o.id === organization.id)
+    return {
+      ...organization,
+      members: organizationFull?.members,
+    }
+  })
+
+
+  return organizations
+} */
 
 export function OrganizationsList() {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   
-  const { data: organizations = [] } = useQuery({
+  const { data: organizations, isLoading } = useQuery({
     queryKey: ['organizations'],
-    queryFn: getOrganizations
+    queryFn: async () => {
+      const organizations = await getOrganizations()
+      return organizations
+    }
   })
 
   const table = useReactTable({
-    data: organizations,
-    columns: columns as ColumnDef<Organization>[],
+    data: organizations || [],
+    columns: columns as ColumnDef<any>[],
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -56,7 +78,11 @@ export function OrganizationsList() {
     },
   })
 
-  if (!organizations.length) {
+  if (isLoading) {
+    return <TableSkeleton />
+  }
+
+  if (!organizations) {
     return <EmptyOrganizations />
   }
 

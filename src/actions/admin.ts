@@ -1,12 +1,12 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { session } from "@/lib/auth-server";
+import { session as sessionServer } from "@/lib/auth-server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { UserRole } from "@/lib/constants/roles";
-import { auth as authClient } from "@/lib/auth";
 import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 const createOrganizationSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -17,9 +17,9 @@ const createOrganizationSchema = z.object({
 export async function createOrganizationWithAdmin(
   data: z.infer<typeof createOrganizationSchema>
 ) {
-  const auth = await session();
+  const session = await sessionServer();    
   
-  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+  if (!session?.user || session.user.role !== UserRole.ADMIN) {
     throw new Error("No autorizado");
   }
 
@@ -58,21 +58,21 @@ export async function createOrganizationWithAdmin(
         },
       });
 
-      await authClient.api.setActiveOrganization({
+      /* const activeOrganization = await authClient.api.setActiveOrganization({
         body: {
           organizationId: organization.id,
         },
         headers: headers()
       });
 
-      await authClient.api.createInvitation({
+      const invitation = await authClient.api.createInvitation({
         body: {
           email: validated.adminEmail,
           organizationId: organization.id,
           role: "owner",
         },
         headers: headers()
-      });
+      });*/
 
       return { organization, owner };
     });
@@ -86,9 +86,9 @@ export async function createOrganizationWithAdmin(
 }
 
 export async function getOrganizations() {
-  const auth = await session();
+  const session = await sessionServer();
   
-      if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+      if (!session?.user || session.user.role !== UserRole.ADMIN) {
         throw new Error("No autorizado");
       }
 
@@ -111,10 +111,23 @@ export async function getOrganizations() {
   return organizations;
 }
 
+export async function deleteOrganization(id: string) {
+  await prisma.organization.delete({
+    where: {
+      id: id,
+    },
+    include: {
+      members: true,
+    }
+  });
+
+  revalidatePath("/admin/organizations")
+}
+
 export async function getUsers() {
-  const auth = await session();
+  const session = await sessionServer();
   
-  if (!auth?.user || auth.user.role !== UserRole.ADMIN) {
+  if (!session?.user || session.user.role !== UserRole.ADMIN) {
     throw new Error("No autorizado");
   }
 
@@ -129,4 +142,31 @@ export async function getUsers() {
   });
 
   return users;
-} 
+}
+
+export async function addMemberWithoutInvitation({ userId, organizationId }: { userId: string | undefined, organizationId: string | undefined }) {
+  const session = await sessionServer();
+
+  if (!session?.user || session.user.role !== UserRole.ADMIN) {
+    throw new Error("No autorizado");
+  }
+
+  if(!userId || !organizationId) {
+    throw new Error("Error al agregar el miembro");
+  }
+
+  const member = await auth.api.addMember({
+    body: {
+      userId: userId,
+      organizationId: organizationId,
+      role: "owner",
+    },
+    headers: headers()
+  });
+
+  if(!member) {
+    throw new Error("Error al agregar el miembro");
+  }
+
+  return member;
+}

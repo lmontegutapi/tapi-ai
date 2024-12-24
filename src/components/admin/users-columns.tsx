@@ -1,7 +1,6 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { User } from "@prisma/client"
 import { MoreHorizontal, Building, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,16 +14,21 @@ import { formatDate } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { UserRole, roleMetadata } from "@/lib/constants/roles"
 
-export type UserWithMembers = User & {
-  members: {
-    organization: {
-      id: string
-      name: string
-    }
-  }[]
+export type UserWithRole = {
+  id: string;
+  role?: string;
+  createdAt: Date;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
+  updatedAt: Date;
+  banned: boolean | null;
+  banReason: string | null;
+  banExpires: Date | null;
 }
 
-export const columns: ColumnDef<UserWithMembers>[] = [
+export const columns: ColumnDef<UserWithRole>[] = [
   {
     accessorKey: "name",
     header: "Usuario",
@@ -56,7 +60,7 @@ export const columns: ColumnDef<UserWithMembers>[] = [
       )
     },
   },
-  {
+/*   {
     accessorKey: "organizations",
     header: "Organizaciones",
     cell: ({ row }) => {
@@ -72,7 +76,7 @@ export const columns: ColumnDef<UserWithMembers>[] = [
         </div>
       )
     },
-  },
+  }, */
   {
     accessorKey: "createdAt",
     header: "Creado",

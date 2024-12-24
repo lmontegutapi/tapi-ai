@@ -27,7 +27,7 @@ import { useState } from "react"
 import { toast } from "@/hooks/use-toast"
 import { Building, Loader2 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
-import { createOrganization } from "@/actions/organization"
+import { addMemberWithoutInvitation } from "@/actions/admin"
 
 const formSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -68,6 +68,29 @@ export function NewOrganizationDrawer() {
         slug: values.slug,
         userId: owner.data?.user.id,
       })
+
+      if(org && owner) {
+        await authClient.sendVerificationEmail({
+          email: values.ownerEmail
+        })
+
+        await authClient.organization.setActive({
+          organizationId: org.data?.id
+        })
+
+        const memberAdded = await addMemberWithoutInvitation({
+          userId: owner.data?.user.id,
+          organizationId: org.data?.id,
+        })
+
+        if(memberAdded) {
+          toast({
+            title: "Miembro agregado exitosamente",
+            description: `El miembro ha sido agregado exitosamente a la organización`,
+          })
+        }
+      }
+
       
       /* const result = await createOrganizationWithOwner({
         name: values.name,
@@ -211,4 +234,4 @@ export function NewOrganizationDrawer() {
       </SheetContent>
     </Sheet>
   )
-} 
+}

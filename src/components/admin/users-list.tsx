@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table"
 import { columns } from "./users-columns"
 import { useQuery } from "@tanstack/react-query"
-import { getUsers } from "@/actions/admin"
+/* import { getUsers } from "@/actions/admin" */
 import {
   Select,
   SelectContent,
@@ -34,23 +34,31 @@ import {
 } from "@/components/ui/select"
 import { EmptyUsers } from "./empty-users"
 import { UserRole, roleMetadata } from "@/lib/constants/roles"
-import { User } from "@prisma/client"
-import { UserWithMembers } from "./users-columns"
+import { UserWithRole } from "./users-columns"
+import { authClient } from "@/lib/auth-client"
+import { TableSkeleton } from "../table-skeleton"
+
+async function getUsers() {
+  const users = await authClient.admin.listUsers({
+      query: {
+          limit: 10,
+      }
+  })
+  return users.data?.users
+}
 
 export function UsersList() {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   
-  const { data: users } = useQuery({
+  const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: getUsers
   })
 
-  console.log("users", users)
-
-  const table = useReactTable<UserWithMembers>({
-    data: users,
+  const table = useReactTable<any>({
+    data: users || [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -66,7 +74,11 @@ export function UsersList() {
     },
   })
 
-  if (!users.length) {
+  if (isLoading) {
+    return <TableSkeleton />
+  }
+
+  if (!users) {
     return <EmptyUsers />
   }
 
@@ -81,7 +93,7 @@ export function UsersList() {
           }
           className="max-w-sm"
         />
-        <Select
+        {/* <Select
           value={(table.getColumn("role")?.getFilterValue() as string) ?? ""}
           onValueChange={(value) => 
             table.getColumn("role")?.setFilterValue(value)
@@ -98,7 +110,7 @@ export function UsersList() {
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </Select> */}
       </div>
       <div className="rounded-md border">
         <Table>

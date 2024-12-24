@@ -137,7 +137,6 @@ export async function getOrganizationByUserId(userId: string) {
 
   return organization
 }
-
 interface CreateOrganizationWithOwnerProps {
   name: string;
   slug: string;

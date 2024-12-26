@@ -55,20 +55,18 @@ const data = {
       url: "/dashboard/receivables",
       icon: DollarSign,
       isActive: true,
-      allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.AGENT],
     },
     {
       title: "Campañas",
       url: "/dashboard/campaigns",
       icon: Phone,
       isActive: true,
-      allowedRoles: [UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
     },
     {
       title: "Configuración",
       url: "/dashboard/settings",
       icon: Settings,
-      allowedRoles: [UserRole.OWNER, UserRole.ADMIN],
+      //allowedRoles: [UserRole.OWNER, UserRole.ADMIN],
       isActive: true,
     },
     

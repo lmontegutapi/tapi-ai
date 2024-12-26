@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import axios from 'axios'
+
 export async function POST(req: Request) {
   try {
     // Verificar el token de autorización

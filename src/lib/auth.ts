@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { PrismaClient } from "@prisma/client";
-import { organization, admin } from "better-auth/plugins";
+import { organization, admin, multiSession } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { openAPI } from "better-auth/plugins";
 import { resend } from "@/lib/email/resend";
@@ -14,7 +14,7 @@ import { authClient } from "./auth-client";
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 
-sendgrid.setApiKey(process.env.SENDGRID_API_KEY!)
+sendgrid.setApiKey(process.env.SENDGRID_API_KEY!);
 const prisma = new PrismaClient();
 
 const from = "Cobranzas AI <lmontegu@auntap.com>";
@@ -70,10 +70,12 @@ export const auth = betterAuth({
         from,
         to: user.email,
         subject: "Restablece tu contraseña",
-        html: await render(reactResetPasswordEmail({
-          username: user.email,
-          resetLink: url,
-        })),
+        html: await render(
+          reactResetPasswordEmail({
+            username: user.email,
+            resetLink: url,
+          })
+        ),
       });
     },
   },
@@ -87,19 +89,21 @@ export const auth = betterAuth({
           from,
           to: data.email,
           subject: "Te han invitado a unirte a una organización",
-          html: await render(reactInvitationEmail({
-            username: data.email,
-            invitedByUsername: data.inviter.user.name,
-            invitedByEmail: data.inviter.user.email,
-            teamName: data.organization.name,
-            inviteLink:
-              process.env.NODE_ENV === "development"
-                ? `http://localhost:3000/accept-invitation/${data.id}`
-                : `${
-                    process.env.BETTER_AUTH_URL ||
-                    "https://demo.better-auth.com"
-                  }/accept-invitation/${data.id}`,
-          })),
+          html: await render(
+            reactInvitationEmail({
+              username: data.email,
+              invitedByUsername: data.inviter.user.name,
+              invitedByEmail: data.inviter.user.email,
+              teamName: data.organization.name,
+              inviteLink:
+                process.env.NODE_ENV === "development"
+                  ? `http://localhost:3000/accept-invitation/${data.id}`
+                  : `${
+                      process.env.BETTER_AUTH_URL ||
+                      "https://demo.better-auth.com"
+                    }/accept-invitation/${data.id}`,
+            })
+          ),
         });
       },
       allowUserToCreateOrganization: async (user) => {
@@ -112,12 +116,18 @@ export const auth = betterAuth({
           },
         });
 
-        return userRole?.role === UserRole.ADMIN || userRole?.role === UserRole.SUPER_ADMIN;
+        return (
+          userRole?.role === UserRole.ADMIN ||
+          userRole?.role === UserRole.SUPER_ADMIN
+        );
       },
     }),
     admin(),
     nextCookies(),
-    openAPI()
+    openAPI(),
+    multiSession({
+      maximumSessions: 3,
+    }),
   ],
   databaseHooks: {
     session: {
@@ -127,7 +137,7 @@ export const auth = betterAuth({
             let organization = null;
             organization = await getActiveOrganization(session.userId);
 
-            if(!organization) {
+            if (!organization) {
               throw new Error("No organization found for user");
             }
 
@@ -143,7 +153,7 @@ export const auth = betterAuth({
             return { data: session };
           }
         },
-      }
+      },
     },
   },
 });

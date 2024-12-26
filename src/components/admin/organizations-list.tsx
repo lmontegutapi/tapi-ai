@@ -30,6 +30,7 @@ import { Organization } from "@prisma/client"
 import { authClient } from "@/lib/auth-client"
 import { TableSkeleton } from "../table-skeleton"
 import { getOrganizations } from "@/actions/admin"
+import { NewOrganizationDrawer } from "./new-organization-drawer"
 
 /* async function getOrganizations() {
   const organizations = await authClient.organization.list()
@@ -88,6 +89,7 @@ export function OrganizationsList() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-row justify-between ">
       <Input
         placeholder="Filtrar organizaciones..."
         value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
@@ -96,6 +98,8 @@ export function OrganizationsList() {
         }
         className="max-w-sm"
       />
+      <NewOrganizationDrawer />
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>

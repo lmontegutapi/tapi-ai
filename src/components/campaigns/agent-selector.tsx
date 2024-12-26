@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select"
 import { useQuery } from "@tanstack/react-query"
 
-interface Agent {
+export interface Agent {
   agent_id: string
   name: string
   created_at_unix_secs: number

@@ -37,7 +37,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { createCampaign } from "@/actions/campaigns";
-import { Agent } from "@prisma/client";
 import { ReceivableWithContact } from "@/types/receivables";
 import { ReceivablesSelect } from "../receivables/receivables-select";
 
@@ -63,6 +62,13 @@ const campaignSchema = z.object({
   agentId: z.string().min(1, "Debes seleccionar un agente"),
   receivableIds: z.array(z.string()).optional(),
 });
+
+interface Agent {
+  id: string;
+  name: string;
+  voiceId: string;
+  voiceType: string;
+}
 
 interface NewCampaignDrawerProps {
   agents: Agent[];

@@ -26,44 +26,60 @@ export function formatDate(date: Date) {
 }
 
 export const generateReceivablesTemplate = () => {
-  const headers = [
-    'identifier',
-    'name',
-    'phone',
-    'email',
-    'amountCents',
-    'dueDate',
-    'notes'
+  // Campos requeridos
+  const requiredHeaders = [
+    'identifier', // Requerido - Identificador único del cliente
+    'name',      // Requerido - Nombre completo
+    'phone',     // Requerido - Teléfono principal
+    'amountCents', // Requerido - Monto en centavos
+    'dueDate'    // Requerido - Fecha de vencimiento
   ]
-
+ 
+  // Campos opcionales
+  const optionalHeaders = [
+    'additionalPhones', // Opcional - Teléfonos adicionales separados por coma
+    'email',           // Opcional - Correo electrónico  
+    'rfc',            // Opcional - RFC
+    'address',        // Opcional - Dirección
+    'notes'           // Opcional - Notas o referencias
+  ]
+ 
+  const headers = [...requiredHeaders, ...optionalHeaders]
+ 
   const sampleData = [
     {
-      identifier: 'DEBT-001',
+      identifier: 'CLIENT-001',
       name: 'Juan Pérez',
       phone: '1123456789',
-      email: 'juan@ejemplo.com',
-      amountCents: '100000',
+      amountCents: '100000', 
       dueDate: '2024-12-31',
+      additionalPhones: '1123456788,1123456787',
+      email: 'juan@ejemplo.com',
+      rfc: 'PERJ800101XXX',
+      address: 'Av. Ejemplo 123',
       notes: 'Factura #A-001'
     },
     {
-      identifier: 'DEBT-002',
-      name: 'María García',
-      phone: '1187654321',
-      email: 'maria@ejemplo.com',
-      amountCents: '250050',
+      identifier: 'CLIENT-002',
+      name: 'Ana López',
+      phone: '1123456789',
+      amountCents: '100000', 
       dueDate: '2024-12-31',
+      additionalPhones: '1123456788,1123456787',
+      email: 'ana@ejemplo.com',
+      rfc: 'LOPA900202XXX',
+      address: 'Av. Ejemplo 123',
       notes: 'Factura #A-002'
     }
   ]
-
+ 
   const csv = [
     headers.join(','),
-    ...sampleData.map(row => headers.map(header => row[header as keyof typeof row]).join(','))
+    ...sampleData.map(row => headers.map(header => row[header as keyof typeof row] || '').join(','))
   ].join('\n')
-
+ 
   return csv
-}
+ }
 
 export function generateSlug(text: string): string {
   return text

@@ -9,15 +9,15 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { CampaignForm } from "./campaigns-form"
 import { createCampaign, updateCampaign } from "@/actions/campaigns"
-import { ReceivableWithContact } from "@/types/receivables"
+import { Audience } from "@prisma/client"
 
 interface CampaignDrawerProps {
-  campaign?: Campaign
-  receivables: ReceivableWithContact[] | any
-  trigger?: React.ReactNode
+  campaign?: Campaign;
+  audiences: Audience[];
+  trigger?: React.ReactNode;
 }
 
-export function CampaignDrawer({ campaign, receivables, trigger }: CampaignDrawerProps) {
+export function CampaignDrawer({ campaign, audiences, trigger }: CampaignDrawerProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
@@ -70,7 +70,7 @@ export function CampaignDrawer({ campaign, receivables, trigger }: CampaignDrawe
         </SheetHeader>
         <CampaignForm 
           campaign={campaign}
-          receivables={receivables}
+          audiences={audiences}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
         />

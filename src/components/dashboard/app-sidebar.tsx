@@ -2,23 +2,27 @@
 
 import * as React from "react";
 import {
+  ArrowLeftRightIcon,
   BarChart,
   BookOpen,
   Bot,
   Building,
   Building2,
   Command,
+  Contact,
   DollarSign,
   Frame,
   LayoutDashboard,
   LifeBuoy,
   Map,
+  Megaphone,
   Phone,
   PieChart,
   Send,
   Settings,
   Settings2,
   SquareTerminal,
+  Users,
 } from "lucide-react";
 
 import { NavMain } from "@/components/dashboard/nav-main";
@@ -57,32 +61,39 @@ const data = {
       isActive: true,
     },
     {
-      title: "Campañas",
-      url: "/dashboard/campaigns",
-      icon: Phone,
+      title: "Transacciones",
+      url: "/dashboard/transactions",
+      icon: ArrowLeftRightIcon,
       isActive: true,
     },
+    {
+      title: "Campañas",
+      url: "/dashboard/campaigns",
+      icon: Megaphone,
+      isActive: true,
+    },
+    {
+      title: "Audiencias",
+      url: "/dashboard/audiences",
+      icon: Users,
+      isActive: true,
+    },
+    {
+      title: "Contactos",
+      url: "/dashboard/contacts",
+      icon: Contact,
+      isActive: true,
+    }
+  ],
+  navSecondary: [
     {
       title: "Configuración",
       url: "/dashboard/settings",
       icon: Settings,
       //allowedRoles: [UserRole.OWNER, UserRole.ADMIN],
       isActive: true,
-    },
-    
-  ],
-  /* navSecondary: [
-    {
-      title: "Soporte",
-      url: "/support",
-      icon: LifeBuoy,
-    },
-    {
-      title: "Documentación",
-      url: "/docs",
-      icon: BookOpen,
     }
-  ], */
+  ],
   organizations: [
     {
       name: "Mi Empresa S.A.",
@@ -128,7 +139,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           items={data.navMain}
         />
         {/* <NavProjects projects={data.projects} /> */}
-        {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

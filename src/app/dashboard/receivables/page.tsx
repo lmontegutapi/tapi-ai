@@ -3,9 +3,13 @@ import { EmptyState } from "@/components/receivables/empty-state";
 import { ReceivablesTable } from "@/components/receivables/table";
 import { getReceivables } from "@/actions/receivables"
 import { TableSkeleton } from "@/components/table-skeleton";
+import { DataTableWrapper } from "@/components/shared/data-table-wrapper";
+import { columns } from "@/components/receivables/columns";
+import { NewReceivableDrawer } from "@/components/receivables/new-receivable-drawer";
 
 export default async function ReceivablesPage() {
-  const receivables = await getReceivables()
+  const receivablesResponse = await getReceivables();
+  const receivables = Array.isArray(receivablesResponse) ? receivablesResponse : [];
 
   return (
     <div className="container py-6">
@@ -13,13 +17,21 @@ export default async function ReceivablesPage() {
         <h1 className="text-3xl font-bold tracking-tight">Deudas</h1>
       </div>
 
-      {!receivables ? (
-        <EmptyState />
-      ) : (
-        <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
-          <ReceivablesTable data={receivables} />
-        </Suspense>
-      )}
+      <DataTableWrapper
+        data={receivables}
+        columns={columns}
+        EmptyStateComponent={EmptyState}
+        searchKey="contact"
+        actionComponent={<NewReceivableDrawer />}
+        defaultVisibility={{
+          contact: true,
+          amountCents: true,
+          dueDate: true,
+          status: true,
+          notes: true,
+          campaign: true,
+        }}
+      />
     </div>
   );
 }

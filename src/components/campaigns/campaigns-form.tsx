@@ -1,27 +1,40 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Campaign } from "@prisma/client"
-import { Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { VoiceSelector } from "./voice-selector"
-import { CampaignAutomationForm } from "./automation-form"
-import { ReceivablesSelect } from "../receivables/receivables-select"
-import { ReceivableWithContact } from "@/types/receivables"
-import { AgentSelector } from "./agent-selector"
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Audience, Campaign } from "@prisma/client";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { VoiceSelector } from "./voice-selector";
+import { CampaignAutomationForm } from "./automation-form";
+import { ReceivablesSelect } from "../receivables/receivables-select";
+import { ReceivableWithContact } from "@/types/receivables";
+import { AgentSelector } from "./agent-selector";
+import { AudienceSelect } from "../audiences/audience-select";
 
 const campaignSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   context: z.string().min(10, "El contexto debe tener al menos 10 caracteres"),
-  objective: z.string().min(10, "El objetivo debe tener al menos 10 caracteres"),
-  welcomeMessage: z.string().min(10, "El mensaje debe tener al menos 10 caracteres"),
+  objective: z
+    .string()
+    .min(10, "El objetivo debe tener al menos 10 caracteres"),
+  welcomeMessage: z
+    .string()
+    .min(10, "El mensaje debe tener al menos 10 caracteres"),
   startDate: z.string(),
   endDate: z.string(),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
@@ -31,17 +44,24 @@ const campaignSchema = z.object({
   voiceId: z.string().min(1, "Debes seleccionar una voz"),
   voiceName: z.string(),
   voicePreviewUrl: z.string().optional(),
-  receivableIds: z.array(z.string()).optional(),
-})
+  audienceIds: z
+    .array(z.string())
+    .min(1, "Debes seleccionar al menos una audiencia"),
+});
 
 interface CampaignFormProps {
-  campaign?: Campaign
-  receivables: ReceivableWithContact[]
-  onSubmit: (data: z.infer<typeof campaignSchema>) => Promise<void>
-  isSubmitting?: boolean
+  campaign?: Campaign;
+  audiences: Audience[];
+  onSubmit: (data: z.infer<typeof campaignSchema>) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
-export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: CampaignFormProps) {
+export function CampaignForm({
+  campaign,
+  audiences,
+  onSubmit,
+  isSubmitting,
+}: CampaignFormProps) {
   const form = useForm<z.infer<typeof campaignSchema>>({
     resolver: zodResolver(campaignSchema),
     defaultValues: {
@@ -49,8 +69,12 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
       context: campaign?.context ?? "",
       objective: campaign?.objective ?? "",
       welcomeMessage: campaign?.welcomeMessage ?? "",
-      startDate: campaign?.startDate?.toISOString().split("T")[0] ?? new Date().toISOString().split("T")[0],
-      endDate: campaign?.endDate?.toISOString().split("T")[0] ?? new Date().toISOString().split("T")[0],
+      startDate:
+        campaign?.startDate?.toISOString().split("T")[0] ??
+        new Date().toISOString().split("T")[0],
+      endDate:
+        campaign?.endDate?.toISOString().split("T")[0] ??
+        new Date().toISOString().split("T")[0],
       startTime: campaign?.startTime ?? "09:00",
       endTime: campaign?.endTime ?? "18:00",
       callsPerUser: campaign?.callsPerUser ?? 3,
@@ -58,9 +82,9 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
       voiceId: campaign?.voiceId ?? "",
       voiceName: campaign?.voiceName ?? "",
       voicePreviewUrl: campaign?.voicePreviewUrl ?? "",
-      receivableIds: [],
+      audienceIds: [],
     },
-  })
+  });
 
   return (
     <Form {...form}>
@@ -74,7 +98,10 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                 <FormItem>
                   <FormLabel>Nombre de la campaña</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: Cobranza mensual Diciembre" {...field} />
+                    <Input
+                      placeholder="Ej: Cobranza mensual Diciembre"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -148,7 +175,7 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                   <FormControl>
                     <AgentSelector
                       onSelect={({ id }) => {
-                        form.setValue("agentId", id)
+                        form.setValue("agentId", id);
                       }}
                       {...field}
                     />
@@ -165,11 +192,11 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                 <FormItem>
                   <FormLabel>Voz del agente</FormLabel>
                   <FormControl>
-                    <VoiceSelector 
+                    <VoiceSelector
                       onSelect={(voice) => {
-                        form.setValue("voiceId", voice.id)
-                        form.setValue("voiceName", voice.name)
-                        form.setValue("voicePreviewUrl", voice.previewUrl)
+                        form.setValue("voiceId", voice.id);
+                        form.setValue("voiceName", voice.name);
+                        form.setValue("voicePreviewUrl", voice.previewUrl);
                       }}
                       {...field}
                     />
@@ -186,7 +213,11 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                 <FormItem>
                   <FormLabel>Contexto de la empresa</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Describe el contexto..." className="resize-none" {...field} />
+                    <Textarea
+                      placeholder="Describe el contexto..."
+                      className="resize-none"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -200,7 +231,11 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                 <FormItem>
                   <FormLabel>Objetivo de las llamadas</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="¿Qué buscas lograr?" className="resize-none" {...field} />
+                    <Textarea
+                      placeholder="¿Qué buscas lograr?"
+                      className="resize-none"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -214,7 +249,11 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                 <FormItem>
                   <FormLabel>Mensaje de bienvenida</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Mensaje inicial..." className="resize-none" {...field} />
+                    <Textarea
+                      placeholder="Mensaje inicial..."
+                      className="resize-none"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -223,17 +262,20 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
 
             <FormField
               control={form.control}
-              name="receivableIds"
+              name="audienceIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Deudas a cobrar</FormLabel>
+                  <FormLabel>Audiencias</FormLabel>
                   <FormControl>
-                    <ReceivablesSelect 
-                      receivables={receivables}
+                    <AudienceSelect
+                      audiences={audiences}
                       selectedIds={field.value}
                       onSelect={field.onChange}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Selecciona las audiencias que recibirán las llamadas
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -267,10 +309,14 @@ export function CampaignForm({ campaign, receivables, onSubmit, isSubmitting }: 
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {campaign ? "Actualizando..." : "Creando..."}
               </>
-            ) : campaign ? "Actualizar" : "Crear"}
+            ) : campaign ? (
+              "Actualizar"
+            ) : (
+              "Crear"
+            )}
           </Button>
         </div>
       </form>
     </Form>
-  )
+  );
 }

@@ -8,21 +8,21 @@ datasource db {
 }
 
 model User {
-  id              String            @id @default(cuid())
-  name            String
-  email           String           
-  emailVerified   Boolean
-  image           String?
-  createdAt       DateTime
-  updatedAt       DateTime
-  banned          Boolean?
-  banReason       String?
-  banExpires      DateTime?
-  role            String?
-  accounts        Account[]
-  invitations     Invitation[]
-  members         Member[]
-  sessions        Session[]
+  id            String       @id @default(cuid())
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  banned        Boolean?
+  banReason     String?
+  banExpires    DateTime?
+  role          String?
+  accounts      Account[]
+  invitations   Invitation[]
+  members       Member[]
+  sessions      Session[]
 
   @@unique([email])
   @@map("user")
@@ -75,11 +75,12 @@ model Verification {
 }
 
 model Organization {
-  id                String              @id @default(cuid())
+  id                String                  @id @default(cuid())
   name              String
-  slug              String?             @unique
+  slug              String?                 @unique
   logo              String?
-  createdAt         DateTime
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @default(now()) @updatedAt
   metadata          String?
   agentPerformance  AgentPerformance[]
   activity          Activity[]
@@ -96,6 +97,9 @@ model Organization {
   paymentMethod     PaymentMethod[]
   receivables       Receivable[]
   emailPreference   EmailPreference[]
+  settings          OrganizationSettings?
+  reconciliations   PaymentReconciliation[]
+  audiences         Audience[]
 
   @@map("organization")
 }
@@ -127,64 +131,67 @@ model Invitation {
 }
 
 model Receivable {
-  id             String           @id @default(cuid())
-  organizationId String
-  contactId      String
-  paymentId      String?
-  amountCents    Int
-  currency       String?          @default("MXN")
-  notes          String?
-  dueDate        DateTime
-  status         ReceivableStatus
-  isPastDue      Boolean          @default(false)
-  isOpen         Boolean          @default(true)
-  campaignId     String?
-  metadata       Json?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  activity       Activity[]
-  calls          Call[]
-  paymentPromise PaymentPromise[]
-  campaign       Campaign?        @relation(fields: [campaignId], references: [id])
-  contact        Contact          @relation(fields: [contactId], references: [id])
-  organization   Organization     @relation(fields: [organizationId], references: [id])
+  id                String             @id @default(cuid())
+  organizationId    String
+  contactId         String
+  paymentId         String?
+  amountCents       Int
+  currency          String?            @default("MXN")
+  notes             String?
+  dueDate           DateTime
+  status            ReceivableStatus
+  isPastDue         Boolean            @default(false)
+  isOpen            Boolean            @default(true)
+  campaignId        String?
+  metadata          Json?
+  delinquencyBucket String? // Nuevo campo para clasificar por morosidad
+  contactPreference ContactPreference?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now()) @updatedAt
+  activity          Activity[]
+  calls             Call[]
+  paymentPromise    PaymentPromise[]
+  campaign          Campaign?          @relation(fields: [campaignId], references: [id])
+  contact           Contact            @relation(fields: [contactId], references: [id])
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  audiences         Audience[]         @relation("audience_to_receivable")
 
   @@index([paymentId])
   @@map("receivable")
 }
 
 model Campaign {
-  id String @id @default(cuid())
-  name String
-  organizationId String
-  startDate DateTime
-  endDate DateTime
-  startTime String
-  endTime String
-  callsPerUser Int
-  status CampaignStatus @default(DRAFT)
-  context String
-  objective String
-  welcomeMessage String
-  agentId String // ID del agente en ElevenLabs
-  voiceId String? // ID de la voz en ElevenLabs
-  voiceName String? // Nombre de la voz seleccionada
+  id              String              @id @default(cuid())
+  name            String
+  organizationId  String
+  startDate       DateTime
+  endDate         DateTime
+  startTime       String
+  endTime         String
+  callsPerUser    Int
+  status          CampaignStatus      @default(DRAFT)
+  context         String
+  objective       String
+  welcomeMessage  String
+  agentId         String // ID del agente en ElevenLabs
+  voiceId         String? // ID de la voz en ElevenLabs
+  voiceName       String? // Nombre de la voz seleccionada
   voicePreviewUrl String? // URL del preview de la voz
-  metadata Json?
-  totalCalls Int
-  completedCalls Int @default(0)
-  successfulCalls Int @default(0)
-  failedCalls Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  automation CampaignAutomation?
+  metadata        Json?
+  totalCalls      Int
+  completedCalls  Int                 @default(0)
+  successfulCalls Int                 @default(0)
+  failedCalls     Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now()) @updatedAt
+  audiences       Audience[]          @relation("campaign_audience")
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  automation      CampaignAutomation?
   campaignMetrics CampaignMetrics[]
-  paymentPromise PaymentPromise[]
-  receivables Receivable[]
-  contacts Contact[] @relation("campaign_to_contact")
-  calls Call[]
+  paymentPromise  PaymentPromise[]
+  receivables     Receivable[]
+  contacts        Contact[]           @relation("campaign_to_contact")
+  calls           Call[]
 
   @@map("campaign")
 }
@@ -197,32 +204,68 @@ model CampaignAutomation {
   onDueDate  Boolean  @default(false)
   afterDays  Int?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime @default(now()) @updatedAt
   campaign   Campaign @relation(fields: [campaignId], references: [id])
 
   @@map("campaign_automation")
 }
 
-model Contact {
-  id             String         @id @default(cuid())
-  organizationId String
-  name           String
-  email          String?
-  phone          String?
-  rfc            String?
-  address        String?
-  paymentTerms   Int?
-  identifier     String?
-  metadata       Json?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  organization   Organization   @relation(fields: [organizationId], references: [id])
-  contactPhone   ContactPhone[]
-  invoices       Invoice[]
-  receivables    Receivable[]
-  campaigns      Campaign[]     @relation("campaign_to_contact")
+model ContactPreference {
+  id           String         @id @default(cuid())
+  receivableId String         @unique
+  channel      ContactChannel
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now()) @updatedAt
 
-  @@index([identifier])
+  receivable Receivable @relation(fields: [receivableId], references: [id])
+
+  @@map("contact_preference")
+}
+
+model Audience {
+  id                String            @id @default(cuid())
+  name              String
+  description       String?
+  organizationId    String
+  delinquencyBucket DelinquencyBucket
+  contactPreference ContactChannel
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  campaigns    Campaign[]   @relation("campaign_audience")
+  receivables  Receivable[] @relation("audience_to_receivable")
+  contacts     Contact[]    @relation("audience_to_contact")
+
+  @@map("audience")
+}
+
+model Contact {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  name              String
+  email             String?
+  phone             String?
+  rfc               String?
+  address           String?
+  paymentTerms      Int?
+  identifier        String?
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @default(now()) @updatedAt
+  organization      Organization              @relation(fields: [organizationId], references: [id])
+  contactPhone      ContactPhone[]
+  invoices          Invoice[]
+  receivables       Receivable[]
+  campaigns         Campaign[]                @relation("campaign_to_contact")
+  clientPreferences ClientPaymentPreference[]
+  chatbotConfig     ChatbotConfig[]
+  audiences         Audience[]                @relation("audience_to_contact")
+
+  @@unique([organizationId, phone])
+  @@unique([organizationId, email])
+  @@index([organizationId, identifier])
   @@map("contact")
 }
 
@@ -237,7 +280,7 @@ model Call {
   hasPromise     Boolean         @default(false)
   metadata       Json?
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  updatedAt      DateTime        @default(now()) @updatedAt
   campaign       Campaign?       @relation(fields: [campaignId], references: [id])
   receivable     Receivable      @relation(fields: [receivableId], references: [id])
   promiseDetails PaymentPromise?
@@ -264,7 +307,7 @@ model EmailTemplate {
   isActive       Boolean      @default(true)
   organizationId String
   createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  updatedAt      DateTime     @default(now()) @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, type])
@@ -272,13 +315,13 @@ model EmailTemplate {
 }
 
 model EmailPreference {
-  id        String    @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
-  emailType EmailType
-  isEnabled Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  organization Organization @relation(fields: [organizationId], references: [id])
+  emailType      EmailType
+  isEnabled      Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now()) @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, emailType])
   @@map("email_preference")
@@ -298,7 +341,7 @@ model Invoice {
   metadata       Json?
   paymentDate    DateTime?
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  updatedAt      DateTime        @default(now()) @updatedAt
   client         Contact         @relation(fields: [clientId], references: [id])
   organization   Organization    @relation(fields: [organizationId], references: [id])
   items          InvoiceItem[]
@@ -317,7 +360,7 @@ model InvoiceItem {
   total       Int
   metadata    Json?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now()) @updatedAt
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
 
   @@map("invoice_item")
@@ -336,7 +379,7 @@ model PaymentLink {
   accessCount         Int                  @default(0)
   lastAccessedAt      DateTime?
   createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  updatedAt           DateTime             @default(now()) @updatedAt
   invoice             Invoice?             @relation(fields: [invoiceId], references: [id])
   organization        Organization         @relation(fields: [organizationId], references: [id])
   paymentTransactions PaymentTransaction[]
@@ -346,20 +389,48 @@ model PaymentLink {
 }
 
 model PaymentMethod {
-  id             String        @id @default(cuid())
-  type           PaymentType
-  name           String
-  organizationId String
-  isActive       Boolean       @default(true)
-  credentials    Json?
-  metadata       Json?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  invoices       Invoice[]     @relation("invoice_to_payment_method")
-  paymentLinks   PaymentLink[] @relation("payment_link_to_payment_method")
+  id                String                    @id @default(cuid())
+  type              PaymentType
+  name              String
+  organizationId    String
+  isActive          Boolean                   @default(true)
+  credentials       Json?
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @default(now()) @updatedAt
+  organization      Organization              @relation(fields: [organizationId], references: [id])
+  invoices          Invoice[]                 @relation("invoice_to_payment_method")
+  paymentLinks      PaymentLink[]             @relation("payment_link_to_payment_method")
+  clientPreferences ClientPaymentPreference[] // Nuevo campo
 
   @@map("payment_method")
+}
+
+model ClientPaymentPreference {
+  id              String   @id @default(cuid())
+  clientId        String
+  paymentMethodId String
+  isDefault       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  client        Contact       @relation(fields: [clientId], references: [id])
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+
+  @@map("client_payment_preference")
+}
+
+model ChatbotConfig {
+  id        String   @id @default(cuid())
+  clientId  String
+  isActive  Boolean  @default(true)
+  flows     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  client Contact @relation(fields: [clientId], references: [id])
+
+  @@map("chatbot_config")
 }
 
 model PaymentTransaction {
@@ -372,7 +443,7 @@ model PaymentTransaction {
   paymentReference String?
   metadata         Json?
   createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  updatedAt        DateTime          @default(now()) @updatedAt
   paymentLink      PaymentLink       @relation(fields: [paymentLinkId], references: [id])
 
   @@map("payment_transaction")
@@ -432,7 +503,7 @@ model PaymentPromise {
   fulfilledDate        DateTime?
   metadata             Json?
   createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  updatedAt            DateTime      @default(now()) @updatedAt
   call                 Call          @relation(fields: [callId], references: [id])
   campaign             Campaign      @relation(fields: [campaignId], references: [id])
   receivable           Receivable    @relation(fields: [receivableId], references: [id])
@@ -485,7 +556,6 @@ model Activity {
 
   @@index([organizationId])
   @@index([receivableId])
-
   @@map("activity")
 }
 
@@ -497,10 +567,57 @@ model ContactPhone {
   description String?
   isPrimary   Boolean   @default(false)
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime  @default(now()) @updatedAt
   contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@map("contact_phone")
+}
+
+model PaymentReconciliation {
+  id             String               @id @default(cuid())
+  organizationId String
+  amount         Int
+  currency       String               @default("MXN")
+  status         ReconciliationStatus
+  sourceType     SourceType
+  sourceId       String // ID de PaymentTransaction o referencia externa
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @default(now()) @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+
+  @@index([sourceId])
+  @@map("payment_reconciliation")
+}
+
+model OrganizationSettings {
+  id              String       @id @default(cuid())
+  organizationId  String       @unique
+  enableCalls     Boolean      @default(true)
+  enableWhatsapp  Boolean      @default(false)
+  enableEmail     Boolean      @default(true)
+  callsCredits    Int          @default(0)
+  whatsappCredits Int          @default(0)
+  emailCredits    Int          @default(0)
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now()) @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("organization_settings")
+}
+
+enum ReconciliationStatus {
+  PENDING
+  MATCHED
+  UNMATCHED
+  DISPUTED
+}
+
+enum SourceType {
+  PAYMENT_TRANSACTION
+  BANK_STATEMENT
+  MANUAL_ENTRY
 }
 
 enum ReceivableStatus {
@@ -593,4 +710,20 @@ enum PhoneType {
   WORK
   RELATIVE
   OTHER
+}
+
+enum ContactChannel {
+  WHATSAPP
+  VOICE_AI
+  EMAIL
+}
+
+enum DelinquencyBucket {
+  CURRENT
+  PAST_DUE_10
+  PAST_DUE_15
+  PAST_DUE_30
+  PAST_DUE_60
+  PAST_DUE_90
+  PAST_DUE_OVER_90
 }

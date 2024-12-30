@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 import type { Organization, Campaign } from "@prisma/client";
 
 
+
 type CampaignInput = z.infer<typeof campaignSchema>;
 
 const campaignSchema = z.object({
@@ -26,37 +27,63 @@ const campaignSchema = z.object({
   voiceName: z.string(),
   voicePreviewUrl: z.string().optional(),
   receivableIds: z.array(z.string()).optional(),
+  audienceIds: z.array(z.string()).optional(),
 });
 
 export async function createCampaign(data: z.infer<typeof campaignSchema>) {
   try {
-    const session = await sessionServer()
-    if (!session) return { success: false, error: "No autorizado" }
+    const session = await sessionServer();
+    if (!session) return { success: false, error: "No autorizado" };
 
     const organization = await prisma.organization.findFirst({
       where: {
         members: { some: { userId: session.user.id } }
       }
-    })
+    });
 
-    if (!organization) return { success: false, error: "Organización no encontrada" }
+    if (!organization) return { success: false, error: "Organización no encontrada" };
 
-    let receivableIds = data.receivableIds;
-    if (!receivableIds?.length) {
-      const allReceivables = await prisma.receivable.findMany({
-        where: {
-          organizationId: organization.id,
-          status: "OPEN",
-          campaignId: null
-        },
-        select: { id: true }
-      });
-      receivableIds = allReceivables.map(r => r.id);
+    // Buscar audiencias
+    const audiences = await prisma.audience.findMany({
+      where: { 
+        id: { in: data.audienceIds || [] },
+        organizationId: organization.id
+      }
+    });
+
+    // Obtener contactos para las audiencias mediante consulta raw
+    const contacts = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT DISTINCT c.id 
+      FROM "contact" c
+      JOIN "_audience_to_contact" a2c ON c.id = a2c."B"
+      WHERE a2c."A" IN (${data.audienceIds?.join(',')})
+      AND c."organizationId" = ${organization.id}
+    `;
+
+    // Obtener receivables para las audiencias mediante consulta raw
+    const receivables = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT r.id 
+      FROM "receivable" r
+      JOIN "_audience_to_receivable" a2r ON r.id = a2r."B"
+      WHERE a2r."A" IN (${data.audienceIds?.join(',')})
+      AND r."isOpen" = true 
+      AND r."campaignId" IS NULL
+      AND r."organizationId" = ${organization.id}
+    `;
+
+    if (receivables.length === 0) {
+      return { 
+        success: false, 
+        error: "Las audiencias seleccionadas no tienen deudas activas" 
+      };
     }
+
+    // Extraer IDs de contactos y receivables
+    const contactIds = contacts.map(c => c.id);
+    const receivableIds = receivables.map(r => r.id);
 
     const campaign = await prisma.campaign.create({
       data: {
-        organizationId: organization.id,
         name: data.name,
         context: data.context,
         objective: data.objective,
@@ -70,22 +97,28 @@ export async function createCampaign(data: z.infer<typeof campaignSchema>) {
         voiceId: data.voiceId,
         voiceName: data.voiceName,
         voicePreviewUrl: data.voicePreviewUrl,
+        organizationId: organization.id,
         totalCalls: receivableIds.length * data.callsPerUser,
         status: "DRAFT",
+        audiences: {
+          connect: audiences.map(a => ({ id: a.id }))
+        },
+        contacts: {
+          connect: contactIds.map(id => ({ id }))
+        },
         receivables: {
           connect: receivableIds.map(id => ({ id }))
         }
       }
-    })
+    });
 
-    revalidatePath('/dashboard/campaigns')
-    return { success: true, data: campaign }
+    revalidatePath('/dashboard/campaigns');
+    return { success: true, data: campaign };
   } catch (error) {
-    console.error('Error creating campaign:', error)
-    return { success: false, error: "Error al crear la campaña" }
+    console.error('Error creating campaign:', error);
+    return { success: false, error: "Error al crear la campaña" };
   }
 }
-
 export async function updateCampaign(
   campaignId: string,
   input: Partial<z.infer<typeof campaignSchema>>
@@ -106,16 +139,21 @@ export async function updateCampaign(
     if (!campaign) return { success: false, error: "Campaña no encontrada" };
 
     const validatedData = campaignSchema.partial().parse(input);
-
+    
+    // Actualizar la campaña con todos los datos validados
     const updatedCampaign = await prisma.campaign.update({
       where: { id: campaignId },
       data: {
         ...validatedData,
-        startDate: input.startDate ? new Date(input.startDate) : undefined,
-        endDate: input.endDate ? new Date(input.endDate) : undefined,
+        startDate: validatedData.startDate ? new Date(validatedData.startDate) : undefined,
+        endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
+        audiences: validatedData.audienceIds ? {
+          set: validatedData.audienceIds.map(id => ({ id }))
+        } : undefined
       }
     });
 
+    // Actualizar receivables si se proporcionan
     if (input.receivableIds?.length) {
       await prisma.$transaction([
         prisma.receivable.updateMany({
@@ -278,22 +316,27 @@ export async function getCampaigns() {
     return [];
   }
 
-  const campaigns = await prisma.campaign.findMany({
-    where: {
-      organization: {
-        members: {
-          some: {
-            userId: session.user.id,
+  try {
+    const campaigns = await prisma.campaign.findMany({
+      where: {
+        organization: {
+          members: {
+            some: {
+              userId: session.user.id,
+            },
           },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-  return campaigns;
+    return campaigns;
+  } catch (error) {
+    console.error('Error getting campaigns:', error);
+    return [];
+  }
 }
 
 export async function getCampaign(campaignId: string) {

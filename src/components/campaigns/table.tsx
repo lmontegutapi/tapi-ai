@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -12,11 +12,11 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
-import { Phone, Plus } from "lucide-react"
+} from "@tanstack/react-table";
+import { Phone, Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -24,26 +24,27 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import Link from "next/link"
-import { EmptyCampaigns } from "./empty-campaigns"
-import { CampaignDrawer } from "./campaigns-drawer"
+} from "@/components/ui/table";
+import Link from "next/link";
+import { EmptyCampaigns } from "./empty-campaigns";
+import { CampaignDrawer } from "./campaigns-drawer";
+import { Audience } from "@prisma/client";
 
 interface CampaignsTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
-  receivables?: any[]
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  renderCreateButton: () => React.ReactNode;
 }
 
 export function CampaignsTable<TData, TValue>({
   columns,
   data,
-  receivables,
+  renderCreateButton
 }: CampaignsTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = useState({})
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
 
   const table = useReactTable({
     data,
@@ -62,10 +63,10 @@ export function CampaignsTable<TData, TValue>({
       columnVisibility,
       rowSelection,
     },
-  })
+  });
 
   if (data.length === 0) {
-    return <EmptyCampaigns />
+    return <EmptyCampaigns />;
   }
 
   return (
@@ -80,7 +81,7 @@ export function CampaignsTable<TData, TValue>({
           className="max-w-sm"
         />
         <div className="flex items-center gap-2">
-          <Button
+          {/* <Button
             variant="outline"
             disabled={table.getFilteredSelectedRowModel().rows.length === 0}
             onClick={() => {
@@ -89,10 +90,8 @@ export function CampaignsTable<TData, TValue>({
           >
             <Phone className="mr-2 h-4 w-4" />
             Llamar seleccionados
-          </Button>
-          {receivables && (
-            <CampaignDrawer receivables={receivables} />
-          )}
+          </Button> */}
+          {renderCreateButton && renderCreateButton()}
         </div>
       </div>
       <div className="rounded-md border">
@@ -168,5 +167,5 @@ export function CampaignsTable<TData, TValue>({
         </div>
       </div>
     </div>
-  )
+  );
 }

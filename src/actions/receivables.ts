@@ -20,47 +20,37 @@ interface ParsedReceivable {
 
 export async function uploadReceivables(formData: FormData) {
   try {
+    const file = formData.get('file');
+    const organizationId = formData.get('organizationId');
+
+    if (!file || !organizationId) {
+      throw new Error("Archivo y organización son requeridos");
+    }
+
+    const data = new FormData();
+    data.append('file', file);
+    data.append('organizationId', organizationId as string);
+
     const response = await axios.post(
       `${process.env.NEXT_PUBLIC_API_URL}/receivables/upload`,
-      formData,
+      data,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+          'Content-Type': 'multipart/form-data'
+        }
       }
     );
 
-    const result = response.data;
-
-
-    const data = await auth.api.getSession({
-      headers: headers(),
-    });
-
-
-
-    if (!data?.session.activeOrganizationId) {
-      return {
-        success: false,
-        error: "No se pudo obtener la organización activa",
-      };
+    if (!response.data.success) {
+      throw new Error(response.data.error);
     }
 
+    return response.data;
 
-
-    // Crear los receivables usando los datos procesados
-    const createdReceivables = await createReceivables(
-      result.data
-    );
-
-
-    revalidatePath("/dashboard/receivables");
-    return createdReceivables;
-  } catch (error) {
-    console.error("Error in receivables action:", error);
+  } catch (error: any) {
     return {
       success: false,
-      error: "Error al procesar las deudas",
+      error: error.message || "Error al procesar el archivo"
     };
   }
 }

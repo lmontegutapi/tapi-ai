@@ -8,7 +8,7 @@ import { ActionCell } from "./action-cell"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Campaign } from "@prisma/client"
 
-export const columns: ColumnDef<ReceivableWithContact>[] = [
+export const columns: ColumnDef<any>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -31,18 +31,39 @@ export const columns: ColumnDef<ReceivableWithContact>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: "contact.identifier",
+    header: "Identificador",
+    cell: ({ row }) => {
+      const identifier = row.original.contact.identifier
+      return <div className="w-[100px]">{identifier || "Sin identificador"}</div>
+    },
+  },
+  {
     accessorKey: "contact",
     header: "Cliente",
     cell: ({ row }) => {
       const receivable = row.original
       return (
         <div>
-          <div className="font-medium">{receivable.contact.name}</div>
-          <div className="text-sm text-muted-foreground">
-            {receivable.contact.phone}
-          </div>
+          <div className="font-medium truncate min-w-[120px]">{receivable.contact.name}</div>
         </div>
       )
+    },
+  },
+  {
+    accessorKey: "contact.phone",
+    header: "Teléfono",
+    cell: ({ row }) => {
+      const phone = row.original.contact.phone
+      return <div className="w-[100px]">{phone || "Sin teléfono"}</div>
+    },
+  },
+  {
+    accessorKey: "contact.email",
+    header: "Email",
+    cell: ({ row }) => {
+      const email = row.original.contact.email
+      return <div className="min-w-[100px] truncate">{email || "Sin email"}</div>
     },
   },
   {

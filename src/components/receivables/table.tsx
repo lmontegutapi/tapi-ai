@@ -17,9 +17,10 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Phone, Plus, Upload } from "lucide-react";
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -34,6 +35,7 @@ import { ReceivableWithContact } from "@/types/receivables";
 import { Separator } from "@/components/ui/separator";
 import { useReceivablesStore } from "@/stores/receivables.store";
 import { NewReceivableDrawer } from "@/components/receivables/new-receivable-drawer";
+import { Checkbox } from "@radix-ui/react-checkbox";
 interface ReceivablesTableProps {
   data: ReceivableWithContact[] | any;
 }
@@ -45,7 +47,14 @@ export function ReceivablesTable({ data }: ReceivablesTableProps) {
     []
   );
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+    React.useState<VisibilityState>({
+      contact: true,
+      amountCents: true,
+      dueDate: true,
+      status: true,
+      notes: true,
+      campaign: true,
+    });
   const [rowSelection, setRowSelection] = React.useState({});
 
   const { openNewReceivableDrawer, setOpenNewReceivableDrawer } = useReceivablesStore((state) => state)
@@ -115,16 +124,14 @@ export function ReceivablesTable({ data }: ReceivablesTableProps) {
           className="max-w-sm"
         />
         <div className="flex items-center gap-2">
-          <Button
+          {/* <Button
             variant="outline"
             disabled={table.getFilteredSelectedRowModel().rows.length === 0}
             onClick={handleBulkCall}
           >
             <Phone className="mr-1 h-4 w-4" />
             Llamar seleccionados
-          </Button>
-          <Separator className="h-6" orientation="vertical" />
-          <NewReceivableDrawer />
+          </Button> */}
           <Button asChild>
             <Link href="/dashboard/receivables/upload">
               <Upload className="mr-1 h-4 w-4" />

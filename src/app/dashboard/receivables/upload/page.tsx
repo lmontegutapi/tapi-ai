@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn, generateReceivablesTemplate } from "@/lib/utils";
 import { Download } from "lucide-react";
 import { uploadReceivables } from "@/actions/receivables";
+import { useActiveOrganization } from "@/lib/auth-client";
 
 const handleDownloadTemplate = () => {
   const csv = generateReceivablesTemplate();
@@ -95,13 +96,17 @@ export default function UploadReceivablesPage() {
     return true;
   };
 
+  const activeOrganization = useActiveOrganization();
+
+  const organizationId = activeOrganization.data?.id;
+
   const handleUpload = async () => {
     if (!file) return;
 
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
-
+    formData.append("organizationId", organizationId as string);
     try {
       // Simular progreso
       const interval = setInterval(() => {

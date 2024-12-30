@@ -15,3 +15,8 @@ interface ReceivableMetadata {
   callAttempts?: number
   [key: string]: any // Para metadata adicional flexible
 }
+
+export type ReceivableWithCampaignAndContact = Receivable & {
+  contact: Contact
+  campaign: Campaign
+}

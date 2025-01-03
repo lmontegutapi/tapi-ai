@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import axios from 'axios'
-
+import { prisma } from '@/lib/db'
 export async function POST(req: Request) {
   try {
     // Verificar el token de autorización
@@ -34,10 +34,15 @@ export async function POST(req: Request) {
       )
     }
 
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { welcomeMessage: true }
+    });
+
     const response = await axios.post(`${process.env.API_URL}/outbound-call`, {
       phoneNumber,
       voiceId: process.env.ELEVENLABS_VOICE_ID!,
-      firstMessage: "Hola, ¿cómo estás?",
+      firstMessage: campaign?.welcomeMessage || "Hola, ¿cómo estás?",
 
     })
 

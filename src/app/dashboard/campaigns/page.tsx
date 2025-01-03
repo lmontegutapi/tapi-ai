@@ -1,3 +1,4 @@
+
 import { Suspense } from "react";
 import { Separator } from "@/components/ui/separator";
 import { CampaignsTable } from "@/components/campaigns/table";
@@ -38,14 +39,14 @@ export default async function CampaignsPage() {
         <EmptyCampaigns />
       ) : (
         <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
-          {/* <TableWrapper campaigns={campaigns} audiences={audiencesResult.data} /> */}
-          <CampaignsTable 
+          <TableWrapper campaigns={campaigns} audiences={audiences} />
+          {/* <CampaignsTable 
             columns={columns} 
             data={campaigns}
             renderCreateButton={() => (
               <CampaignDrawer audiences={audiences} />
             )}
-          />
+          /> */}
         </Suspense>
       )}
     </div>

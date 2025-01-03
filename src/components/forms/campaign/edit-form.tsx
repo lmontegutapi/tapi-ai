@@ -29,11 +29,10 @@ import {
 } from "@/components/ui/select";
 import { updateCampaign } from "@/actions/campaigns";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 
 const campaignFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
-  organizationId: z.string().uuid("ID de organización inválido"),
+  organizationId: z.string().min(1, "La organización es requerida"),
   startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Fecha de inicio inválida",
   }),
@@ -68,7 +67,7 @@ interface EditCampaignFormProps {
 
 export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
   const router = useRouter();
-
+  console.log("campaign", campaign)
   const form = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignFormSchema),
     defaultValues: {
@@ -88,6 +87,8 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
       voicePreviewUrl: campaign.voicePreviewUrl || undefined,
     },
   });
+
+  console.log(form.formState.errors)
 
   async function onSubmit(data: CampaignFormValues) {
     try {
@@ -130,6 +131,20 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
                         placeholder="Ej: Cobranza mensual Diciembre"
                         {...field}
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="organizationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Organización</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

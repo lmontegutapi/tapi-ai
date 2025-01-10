@@ -104,13 +104,10 @@ export function NewReceivableDrawer() {
     }
   }
 
-  const clearErrorsWhenOpen = () => {
+  useEffect(() => {
     form.clearErrors();
     form.reset();
-  };
-
-  useEffect(() => {
-    clearErrorsWhenOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation"
 export default async function AudiencePage({ params }: { params: { id: string } }) {
   const audienceDetails = await getAudienceDetails(params.id);
 
-  if (!audienceDetails) { 
+  if (!audienceDetails.data) { 
     return notFound();
   }
 

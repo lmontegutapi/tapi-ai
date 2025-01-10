@@ -1,22 +1,44 @@
-import { Receivable, Contact, Campaign } from "@prisma/client"
+import { Campaign, Contact, PaymentPromise, Receivable } from "@prisma/client";
 
-export type ReceivableWithContact = Receivable & {
-  contact: Contact
-  campaign: Campaign
+export interface ReceivableWithContact extends Omit<Receivable, "campaign"> {
+  contact: Contact;
+  paymentPromises: PaymentPromise[];
+  campaign?: Campaign;
 }
 
-interface ReceivableMetadata {
-  lastUpdatedAt?: Date
-  lastUpdatedBy?: string
-  lastStatus?: string
-  statusChangedAt?: Date
-  notes?: string
-  paymentAttempts?: number
-  callAttempts?: number
-  [key: string]: any // Para metadata adicional flexible
-}
-
-export type ReceivableWithCampaignAndContact = Receivable & {
-  contact: Contact
-  campaign: Campaign
+export interface ResponseAudienceDetails {
+  success: boolean;
+  data: {
+    audience: {
+      id: string;
+      name: string;
+      description: string | null;
+      organizationId: string;
+      delinquencyBucket: string;
+      contactPreference: string;
+      metadata: any;
+      createdAt: Date;
+      updatedAt: Date;
+      receivables: ReceivableWithContact[];
+      campaigns: Campaign[];
+    };
+    metrics: {
+      totalAmount: number;
+      pastDueAmount: number;
+      totalReceivables: number;
+      totalContacts: number;
+      totalCampaigns: number;
+      activeCampaigns: number;
+      activePromises: number;
+      totalCalls: number;
+      averageAmount: number;
+      receivablesByStatus: Record<string, number>;
+      contactChannelMetrics: {
+        whatsapp: number;
+        email: number;
+        voice: number;
+      };
+    };
+  };
+  error?: string;
 }

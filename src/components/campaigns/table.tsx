@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/table";
 import Link from "next/link";
 import { EmptyCampaigns } from "./empty-campaigns";
-import { CampaignDrawer } from "./campaigns-drawer";
 import { Audience } from "@prisma/client";
 
 interface CampaignsTableProps<TData, TValue> {

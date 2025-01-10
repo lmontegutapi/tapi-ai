@@ -7,9 +7,9 @@ import { DataTableWrapper } from "@/components/shared/data-table-wrapper";
 import { columns } from "@/components/receivables/columns";
 import { NewReceivableDrawer } from "@/components/receivables/new-receivable-drawer";
 
+export const dynamic = 'force-dynamic';
 export default async function ReceivablesPage() {
   const receivablesResponse = await getReceivables();
-  console.log("ReceivablesResponse", receivablesResponse)
   const receivables = Array.isArray(receivablesResponse.data) ? receivablesResponse.data : [];
 
   return (

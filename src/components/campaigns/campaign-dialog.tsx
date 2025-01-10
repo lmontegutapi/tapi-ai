@@ -3,27 +3,26 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { CampaignForm } from "./campaign-form";
 import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { useCampaignsStore } from "@/stores/campaigns.store";
 
 interface CampaignDialogProps {
   campaign?: any;
-  audiences?: any[];
   trigger?: React.ReactNode;
-  onSubmit: (data: any) => Promise<void>;
 }
 
-export function CampaignDialog({ campaign, audiences, trigger, onSubmit }: CampaignDialogProps) {
+export function CampaignDialog({ campaign, trigger }: CampaignDialogProps) {
   const [open, setOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { createCampaign, isSubmitting } = useCampaignsStore();
 
   const handleSubmit = async (data: any) => {
-    setIsSubmitting(true);
-    try {
-      await onSubmit(data);
+    const result = await createCampaign(data);
+    
+    if (result.success) {
       toast({
         title: "Éxito",
         description: campaign 
@@ -32,14 +31,12 @@ export function CampaignDialog({ campaign, audiences, trigger, onSubmit }: Campa
       });
       setOpen(false);
       router.refresh();
-    } catch (error: any) {
+    } else {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "No se pudo procesar la campaña",
+        description: result.error || "No se pudo procesar la campaña",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -61,7 +58,6 @@ export function CampaignDialog({ campaign, audiences, trigger, onSubmit }: Campa
         </DialogHeader>
         <CampaignForm
           campaign={campaign}
-          audiences={audiences}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
         />

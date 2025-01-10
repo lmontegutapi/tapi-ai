@@ -4,6 +4,8 @@ import { NewAudienceDrawer } from "@/components/audiences/new-audience-drawer";
 import { columns } from "@/components/audiences/columns";
 import { getAudiences } from "@/actions/audiences";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AudiencesPage() {
   const { data: audiences = [] } = await getAudiences();
 

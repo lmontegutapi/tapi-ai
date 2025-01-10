@@ -33,26 +33,7 @@ interface ContactsTableProps<TData> {
   data: TData[];
 }
 
-interface ContactWithPhones {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  rfc: string | null;
-  address: string | null;
-  identifier: string | null;
-  organizationId: string;
-  createdAt: string;
-  updatedAt: string;
-  metadata: any;
-  paymentTerms: number | null;
-  phones: Omit<ContactPhone, 'createdAt' | 'updatedAt'> & {
-    createdAt: string;
-    updatedAt: string;
-  }[];
-}
-
-export function ContactsTable<TData extends any>({
+export function ContactsTable<TData>({
   columns,
   data,
 }: ContactsTableProps<TData>) {

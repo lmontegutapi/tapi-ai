@@ -18,7 +18,6 @@ async function getDashboardData() {
       organizations,
       users,
       metrics,
-      recentActivity,
       totalMetrics
     ] = await Promise.allSettled([
       prisma.organization.count(),
@@ -27,16 +26,6 @@ async function getDashboardData() {
         by: ['status'],
         _sum: { amountCents: true },
         _count: true
-      }),
-      prisma.activity.findFirst().then(async (exists) => {
-        if (exists) {
-          return prisma.activity.findMany({
-            take: 5,
-            orderBy: { createdAt: 'desc' },
-            include: { receivable: true }
-          });
-        }
-        return [];
       }),
       prisma.receivable.aggregate({
         _sum: {
@@ -50,7 +39,6 @@ async function getDashboardData() {
       organizations: organizations.status === 'fulfilled' ? organizations.value : 0,
       users: users.status === 'fulfilled' ? users.value : 0,
       metrics: metrics.status === 'fulfilled' ? metrics.value : [],
-      recentActivity: recentActivity.status === 'fulfilled' ? recentActivity.value : [],
       totalMetrics: totalMetrics.status === 'fulfilled' ? totalMetrics.value : { _sum: { amountCents: 0 }, _count: 0 }
     };
   } catch (error) {
@@ -146,17 +134,6 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
       </div>
-
-      {recentActivity.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Actividad Reciente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RecentActivity items={recentActivity} />
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 } 

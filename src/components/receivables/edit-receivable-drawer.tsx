@@ -121,6 +121,7 @@ export function EditReceivableDrawer({
 
   useEffect(() => {
     clearErrorsWhenOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

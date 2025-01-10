@@ -42,7 +42,7 @@ type OrganizationFormValues = z.infer<typeof organizationSchema>;
 export function OrganizationSettings({
   organization,
 }: {
-  organization: Organization;
+  organization: Organization & any
 }) {
   const form = useForm<OrganizationFormValues>({
     resolver: zodResolver(organizationSchema),

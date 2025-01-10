@@ -1,25 +1,9 @@
-import { Phone } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { CampaignDialog } from "./campaign-dialog";
-import { createCampaign } from "@/actions/campaigns";
-import { useRouter } from "next/navigation";
+"use client"
+import { Phone, Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { CampaignDialog } from "./campaign-dialog"
 
-interface EmptyCampaignsProps {
-  agents?: any[];
-  audiences?: any[];
-}
-
-export function EmptyCampaigns({ agents, audiences }: EmptyCampaignsProps) {
-  const router = useRouter();
-
-  const handleSubmit = async (data: any) => {
-    const result = await createCampaign(data);
-    if (result.success) {
-      router.refresh();
-    }
-  };
-
+export function EmptyCampaigns() {
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center animate-in fade-in-50">
       <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
@@ -35,8 +19,6 @@ export function EmptyCampaigns({ agents, audiences }: EmptyCampaignsProps) {
       </div>
 
       <CampaignDialog 
-        audiences={audiences}
-        onSubmit={handleSubmit}
         trigger={
           <Button size="lg" className="mt-4">
             <Plus className="mr-2 h-4 w-4" />
@@ -45,5 +27,5 @@ export function EmptyCampaigns({ agents, audiences }: EmptyCampaignsProps) {
         }
       />
     </div>
-  );
+  )
 }

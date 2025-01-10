@@ -49,27 +49,7 @@ export async function POST(request: Request) {
         });
       }
 
-      case 'getPaymentOptions': {
-        // Obtener métodos de pago disponibles
-        const paymentMethods = await prisma.paymentMethod.findMany({
-          where: {
-            isActive: true,
-            organizationId: user.organizationId,
-          },
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        });
-
-        return NextResponse.json({
-          message: 'Estos son los métodos de pago disponibles:',
-          paymentMethods,
-        });
-      }
-
-      case 'generatePaymentPromise': {
+      /* case 'generatePaymentPromise': {
         // Validar que el receivable exista y pertenezca al usuario
         const receivable = await prisma.receivable.findUnique({
           where: { id: receivableId },
@@ -92,11 +72,11 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'El monto negociado no puede ser menor o igual a cero' }, { status: 400 });
         }
 
-        if(receivable.campaignId) {
+        if(receivable.campaigns.length > 0) {
           // Crear la promesa de pago
           const createData = {
             receivableId: receivable.id,
-            campaignId: receivable.campaignId,
+            campaignId: receivable.campaigns[0].id,
             amountCents: negotiatedAmountCents,
             promisedDate: new Date(promisedDate),
             status: 'PENDING' as const,
@@ -114,7 +94,7 @@ export async function POST(request: Request) {
             paymentPromise,
           });
         }
-      }
+      } */
 
       default: {
         return NextResponse.json({ error: 'Acción no válida' }, { status: 400 });

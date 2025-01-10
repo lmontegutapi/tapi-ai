@@ -64,9 +64,6 @@ export function NewAudienceDrawer({ classNameButton, variantButton }: NewAudienc
   const activeOrganization = useActiveOrganization();
 
   const { data: orgSettings } = useOrganizationSettings();
-
-  console.log("orgSettings", orgSettings);
-
   // Obtener canales habilitados
   const availableChannels: { value: string; label: string }[] = [];
   if (orgSettings?.settings?.communication?.whatsapp?.enabled) {

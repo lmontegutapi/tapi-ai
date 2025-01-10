@@ -10,6 +10,7 @@ import { PaymentSettings } from "@/components/settings/payment-settings"
 import { CommunicationSettings } from "@/components/settings/communication-settings"
 import { getPaymentSettings } from "@/actions/payment-settings"
 
+export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   const organization = await getOrganizationSettings()
   const teamMembers = await getTeamMembers()

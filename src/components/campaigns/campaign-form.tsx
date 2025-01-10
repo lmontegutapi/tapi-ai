@@ -1,3 +1,5 @@
+"use client"
+
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCampaignsStore } from "@/stores/campaigns.store"
 
 interface ContactRule {
   enabled: boolean;
@@ -43,11 +46,11 @@ interface FormData {
 interface CampaignFormProps {
   onSubmit: (data: FormData) => void;
   campaign?: any;
-  audiences?: any[];
   isSubmitting: boolean;
 }
 
-export function CampaignForm({ onSubmit, campaign, audiences, isSubmitting }: CampaignFormProps) {
+export function CampaignForm({ onSubmit, campaign, isSubmitting }: CampaignFormProps) {
+  const { audiences } = useCampaignsStore()
   const form = useForm<FormData>({
     defaultValues: {
       name: campaign?.name ?? "",

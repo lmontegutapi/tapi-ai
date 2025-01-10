@@ -36,10 +36,10 @@ const PAYMENT_METHODS = [
 ] as const;
 
 interface PaymentSettingsProps {
-  settings: Record<string, boolean>;
+  settings?: Record<string, boolean>
 }
 
-export function PaymentSettings({ settings }: PaymentSettingsProps) {
+export function PaymentSettings({ settings = {} }: PaymentSettingsProps) {
   const [loading, setLoading] = useState(false);
 
   console.log("settings", settings);

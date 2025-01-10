@@ -7,6 +7,7 @@ import { TableSkeleton } from "@/components/table-skeleton"
 import { Contact, ContactPhone } from "@prisma/client"
 import { ColumnDef } from "@tanstack/react-table"
 
+export const dynamic = 'force-dynamic';
 interface ContactWithPhones extends Omit<Contact, 'createdAt' | 'updatedAt'> {
   createdAt: string;
   updatedAt: string;

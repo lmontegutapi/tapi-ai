@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { getContactReceivablesPaginated } from "@/actions/contacts";
+import { Receivable } from "@prisma/client"
 
 export function ContactReceivablesPagination({ 
   contactId 
@@ -10,8 +11,13 @@ export function ContactReceivablesPagination({
   contactId: string 
 }) {
   const [page, setPage] = useState(1);
-  const [receivables, setReceivables] = useState([]);
-  const [pagination, setPagination] = useState(null);
+  const [receivables, setReceivables] = useState<Receivable[]>([]);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  } | null>(null);
 
   const loadReceivables = async (newPage: number) => {
     const result = await getContactReceivablesPaginated(contactId, newPage);

@@ -21,9 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteTeamDialog } from "@/components/settings/invite-team-dialog";
-import { Member } from "@prisma/client";
+import { Member, User } from "@prisma/client";
+interface TeamMember extends Member {
+  user: User;
+}
 
-export function TeamSettings({ teamMembers }: { teamMembers: Member[] }) {
+export function TeamSettings({ teamMembers }: { teamMembers: TeamMember[] }) {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   return (
@@ -54,19 +57,19 @@ export function TeamSettings({ teamMembers }: { teamMembers: Member[] }) {
               {teamMembers?.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell className="flex items-center gap-2">
-                    <Avatar>
+                    {/* <Avatar>
                       <AvatarImage src="/placeholder.jpg" />
                       <AvatarFallback>JD</AvatarFallback>
-                    </Avatar>
-                    <span>{member?.organizationId}</span>
+                    </Avatar> */}
+                    <span>{member?.user?.name}</span>
                   </TableCell>
-                  <TableCell>{member?.userId}</TableCell>
+                  <TableCell>{member?.user?.email}</TableCell>
                   <TableCell>
                     <Badge>{member.role}</Badge>
                   </TableCell>
-                 {/*  <TableCell>
-                    <Badge variant="default">{member?.user?.isActive ? "Activo" : "Inactivo"}</Badge>
-                  </TableCell> */}
+                  <TableCell>
+                    <Badge variant="default">{member?.user?.banned ? "Bloqueado" : "Activo"}</Badge>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -4,20 +4,7 @@ import { prisma } from "@/lib/db";
 import { ContactChannel, DelinquencyBucket } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getDelinquencyBucket } from "@/lib/audience-utils";
-
-export async function getAudiences() {
-  try {
-    const audiences = await prisma.audience.findMany({
-      include: {
-        campaigns: true
-      }
-    });
-
-    return { success: true, data: audiences };
-  } catch (error) {
-    return { error: "Error al obtener audiencias" };
-  }
-}
+import { session as serverSession } from "@/lib/auth-server";
 
 export async function createAudience(data: {
   name: string;
@@ -29,9 +16,11 @@ export async function createAudience(data: {
   try {
     const audience = await prisma.audience.create({
       data: {
-        ...data,
+        name: data.name,
+        description: data.description,
         delinquencyBucket: data.delinquencyBucket,
         contactPreference: data.contactPreference,
+        organizationId: data.organizationId,
       }
     });
 
@@ -43,136 +32,438 @@ export async function createAudience(data: {
   }
 }
 
-export async function updateAudience(
-  id: string,
-  data: Partial<{
-    name: string;
-    description: string;
-    delinquencyBucket: string;
-    contactPreference: string;
-  }>
-) {
+export async function getAudiences() {
   try {
-    const audience = await prisma.audience.update({
-      where: { id },
-      data: {
-        ...data,
-        delinquencyBucket: data.delinquencyBucket as any,
-        contactPreference: data.contactPreference as any
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const audiences = await prisma.audience.findMany({
+      where: {
+        organizationId: session.session.activeOrganizationId
+      },
+      include: {
+        receivables: {
+          include: {
+            contact: true
+          }
+        },
+        campaigns: {
+          select: {
+            id: true,
+            name: true,
+            status: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
-    return { success: true, data: audience };
+
+    // Calcular métricas para cada audiencia
+    const audiencesWithMetrics = audiences.map(audience => {
+      const totalAmount = audience.receivables.reduce((sum, r) => sum + r.amountCents, 0);
+      const uniqueContacts = new Set(audience.receivables.map(r => r.contact.id)).size;
+      const activeCampaigns = audience.campaigns.filter(c => c.status === "ACTIVE").length;
+      const pastDueAmount = audience.receivables
+        .filter(r => new Date(r.dueDate) < new Date())
+        .reduce((sum, r) => sum + r.amountCents, 0);
+
+      return {
+        ...audience,
+        metrics: {
+          totalAmount,
+          totalReceivables: audience.receivables.length,
+          totalContacts: uniqueContacts,
+          activeCampaigns,
+          pastDueAmount,
+          averageAmount: audience.receivables.length > 0 
+            ? Math.round(totalAmount / audience.receivables.length) 
+            : 0
+        }
+      };
+    });
+
+    return { success: true, data: audiencesWithMetrics };
   } catch (error) {
+    console.error('Error getting audiences:', error);
+    return { success: false, error: "Error al obtener audiencias" };
+  }
+}
+
+export async function updateAudience(
+  id: string,
+  data: {
+    name: string;
+    description?: string;
+    delinquencyBucket: DelinquencyBucket;
+    contactPreference: ContactChannel;
+    metadata?: any;
+  }
+) {
+  try {
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const audience = await prisma.audience.findFirst({
+      where: {
+        id,
+        organizationId: session.session.activeOrganizationId
+      },
+      include: {
+        campaigns: true
+      }
+    });
+
+    if (!audience) {
+      return { success: false, error: "Audiencia no encontrada" };
+    }
+
+    // Verificar si hay campañas activas
+    const hasActiveCampaigns = audience.campaigns.some(c => c.status === "ACTIVE");
+    if (hasActiveCampaigns) {
+      return { 
+        success: false, 
+        error: "No se puede modificar una audiencia con campañas activas" 
+      };
+    }
+
+    const updatedAudience = await prisma.audience.update({
+      where: { id },
+      data: {
+        name: data.name,
+        description: data.description,
+        delinquencyBucket: data.delinquencyBucket,
+        contactPreference: data.contactPreference,
+        metadata: {
+          ...(audience.metadata || {}),
+          ...(data.metadata || {}),
+          lastUpdated: new Date().toISOString(),
+          updatedBy: session.user.id
+        }
+      },
+      include: {
+        receivables: {
+          include: {
+            contact: true
+          }
+        },
+        campaigns: {
+          select: {
+            id: true,
+            name: true,
+            status: true
+          }
+        }
+      }
+    });
+
+    revalidatePath('/dashboard/audiences');
+    return { success: true, data: updatedAudience };
+  } catch (error) {
+    console.error('Error updating audience:', error);
     return { success: false, error: "Error al actualizar audiencia" };
   }
 }
 
 export async function deleteAudience(id: string) {
   try {
-    await prisma.audience.delete({
-      where: { id }
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const audience = await prisma.audience.findFirst({
+      where: {
+        id,
+        organizationId: session.session.activeOrganizationId
+      },
+      include: {
+        campaigns: true
+      }
     });
+
+    if (!audience) {
+      return { success: false, error: "Audiencia no encontrada" };
+    }
+
+    // Verificar si hay campañas asociadas
+    if (audience.campaigns.length > 0) {
+      return { 
+        success: false, 
+        error: "No se puede eliminar una audiencia con campañas asociadas" 
+      };
+    }
+
+    // Usar transacción para asegurar la integridad
+    await prisma.$transaction(async (tx) => {
+      // Primero desvinculamos los receivables
+      await tx.audience.update({
+        where: { id },
+        data: {
+          receivables: {
+            set: [] // Desconectar todas las relaciones
+          }
+        }
+      });
+
+      // Luego eliminamos la audiencia
+      await tx.audience.delete({
+        where: { id }
+      });
+    });
+
+    revalidatePath('/dashboard/audiences');
     return { success: true };
   } catch (error) {
+    console.error('Error deleting audience:', error);
     return { success: false, error: "Error al eliminar audiencia" };
   }
 }
 
 export async function getAudienceDetails(audienceId: string) {
-  const audience = await prisma.audience.findUnique({
-    where: { id: audienceId },
-    include: {
-      campaigns: true,
+  try {
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return { success: false, error: "No autorizado" };
     }
-  });
 
-  if (!audience) return null;
+    const audience = await prisma.audience.findFirst({
+      where: { 
+        id: audienceId,
+        organizationId: session.session.activeOrganizationId
+      },
+      include: {
+        receivables: {
+          include: {
+            contact: true,
+            paymentPromises: {
+              where: {
+                status: {
+                  in: ['PENDING', 'PARTIALLY_FULFILLED']
+                }
+              }
+            }
+          }
+        },
+        campaigns: {
+          include: {
+            calls: true
+          }
+        }
+      }
+    });
 
-  // Obtener receivables que coincidan con el bucket de la audiencia
-  const matchingReceivables = await prisma.receivable.findMany({
-    where: {
-      organizationId: audience.organizationId,
-      delinquencyBucket: audience.delinquencyBucket,
-    },
-    include: {
-      contact: true,
+    if (!audience) {
+      return { success: false, error: "Audiencia no encontrada" };
     }
-  });
 
-  // Extraer contactos únicos
-  const uniqueContacts = [...new Set(matchingReceivables.map(r => r.contact))];
+    // Calcular métricas detalladas
+    const totalAmount = audience.receivables.reduce((sum, r) => sum + r.amountCents, 0);
+    const pastDueAmount = audience.receivables
+      .filter(r => new Date(r.dueDate) < new Date())
+      .reduce((sum, r) => sum + r.amountCents, 0);
+    const uniqueContacts = new Set(audience.receivables.map(r => r.contact.id));
+    const activePromises = audience.receivables.reduce((sum, r) => 
+      sum + r.paymentPromises.length, 0);
+    const totalCalls = audience.campaigns.reduce((sum, c) => 
+      sum + c.calls.length, 0);
 
-  // Calcular métricas
-  const totalAmount = matchingReceivables.reduce((sum, r) => sum + r.amountCents, 0);
-  const totalReceivables = matchingReceivables.length;
-  const totalContacts = uniqueContacts.length;
+    // Agrupar por estado de deuda
+    const receivablesByStatus = audience.receivables.reduce((acc, r) => ({
+      ...acc,
+      [r.status]: (acc[r.status] || 0) + 1
+    }), {});
 
-  return {
-    audience,
-    metrics: {
-      totalAmount,
-      totalReceivables,
-      totalContacts,
-      campaignsCount: audience.campaigns.length
-    },
-    receivables: matchingReceivables,
-    contacts: uniqueContacts
-  };
+    return {
+      success: true,
+      data: {
+        audience,
+        metrics: {
+          totalAmount,
+          pastDueAmount,
+          totalReceivables: audience.receivables.length,
+          totalContacts: uniqueContacts.size,
+          totalCampaigns: audience.campaigns.length,
+          activeCampaigns: audience.campaigns.filter(c => c.status === "ACTIVE").length,
+          activePromises,
+          totalCalls,
+          averageAmount: audience.receivables.length > 0 
+            ? Math.round(totalAmount / audience.receivables.length) 
+            : 0,
+          receivablesByStatus,
+          contactChannelMetrics: {
+            whatsapp: audience.receivables.filter(r => r.contact.phone).length,
+            email: audience.receivables.filter(r => r.contact.email).length,
+            voice: audience.receivables.filter(r => r.contact.phone).length
+          }
+        }
+      }
+    };
+  } catch (error) {
+    console.error('Error getting audience details:', error);
+    return { success: false, error: "Error al obtener detalles de la audiencia" };
+  }
 }
+
 
 export async function syncAudienceMembers(audienceId: string) {
   try {
-    const audience = await prisma.audience.findUnique({
-      where: { id: audienceId }
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const audience = await prisma.audience.findFirst({
+      where: {
+        id: audienceId,
+        organizationId: session.session.activeOrganizationId
+      }
     });
 
-    if (!audience) return { success: false, error: "Audiencia no encontrada" };
+    if (!audience) {
+      return { success: false, error: "Audiencia no encontrada" };
+    }
+
+    // Fecha actual
+    const now = new Date();
+    
+    // Calcular fechas límite para cada bucket
+    const dates = {
+      over90: new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)),
+      days90: new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)),
+      days60: new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000)),
+      days30: new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)),
+      days15: new Date(now.getTime() - (15 * 24 * 60 * 60 * 1000)),
+      days10: new Date(now.getTime() - (10 * 24 * 60 * 60 * 1000))
+    };
 
     // Buscar receivables que coincidan con el bucket
     const receivables = await prisma.receivable.findMany({
       where: {
         organizationId: audience.organizationId,
         isOpen: true,
-        delinquencyBucket: audience.delinquencyBucket
+        // Definir condiciones según el bucket
+        ...(() => {
+          switch (audience.delinquencyBucket) {
+            case 'PAST_DUE_OVER_90':
+              return {
+                dueDate: {
+                  lt: dates.over90 // Fecha de vencimiento anterior a 90 días
+                }
+              };
+            case 'PAST_DUE_90':
+              return {
+                dueDate: {
+                  lt: dates.days90,
+                  gte: dates.over90
+                }
+              };
+            case 'PAST_DUE_60':
+              return {
+                dueDate: {
+                  lt: dates.days60,
+                  gte: dates.days90
+                }
+              };
+            case 'PAST_DUE_30':
+              return {
+                dueDate: {
+                  lt: dates.days30,
+                  gte: dates.days60
+                }
+              };
+            case 'PAST_DUE_15':
+              return {
+                dueDate: {
+                  lt: dates.days15,
+                  gte: dates.days30
+                }
+              };
+            case 'PAST_DUE_10':
+              return {
+                dueDate: {
+                  lt: dates.days10,
+                  gte: dates.days15
+                }
+              };
+            case 'CURRENT':
+              return {
+                dueDate: {
+                  gte: now // Fecha de vencimiento futura
+                }
+              };
+            default:
+              return {};
+          }
+        })()
       },
       include: {
         contact: true
       }
     });
 
+    // Log para debug
+    console.log(`Found ${receivables.length} receivables for bucket ${audience.delinquencyBucket}`);
+    console.log('Date conditions:', {
+      now: now.toISOString(),
+      over90: dates.over90.toISOString()
+    });
+    
     if (receivables.length === 0) {
-      return { 
-        success: false, 
-        error: `No se encontraron deudas para el bucket: ${audience.delinquencyBucket}` 
+      return {
+        success: false,
+        error: `No se encontraron deudas para el bucket: ${audience.delinquencyBucket}`,
+        details: {
+          bucket: audience.delinquencyBucket,
+          organizationId: audience.organizationId,
+          dateConditions: {
+            now: now.toISOString(),
+            over90: dates.over90.toISOString()
+          }
+        }
       };
     }
 
-    // Crear arreglos para las relaciones
-    const uniqueContactIds = [...new Set(receivables.map(r => r.contact.id))];
+    // Resto del código igual...
+    // Actualizar relaciones y calcular métricas
     const receivableIds = receivables.map(r => r.id);
 
-    // Actualizar las relaciones en la base de datos
-    await prisma.$executeRaw`
-      INSERT INTO "_audience_to_contact" ("A", "B")
-      SELECT ${audienceId}, unnest(${uniqueContactIds}::text[])
-      ON CONFLICT DO NOTHING;
-    `;
+    await prisma.$transaction(async (tx) => {
+      await tx.audience.update({
+        where: { id: audienceId },
+        data: {
+          receivables: {
+            set: receivableIds.map(id => ({ id }))
+          }
+        }
+      });
+    });
 
-    await prisma.$executeRaw`
-      INSERT INTO "_audience_to_receivable" ("A", "B")
-      SELECT ${audienceId}, unnest(${receivableIds}::text[])
-      ON CONFLICT DO NOTHING;
-    `;
+    // Calcular métricas
+    const uniqueContacts = new Set(receivables.map(r => r.contact.id));
+    const totalAmount = receivables.reduce((sum, r) => sum + r.amountCents, 0);
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       data: {
-        contactsCount: uniqueContactIds.length,
-        receivablesCount: receivableIds.length
+        receivablesCount: receivableIds.length,
+        contactsCount: uniqueContacts.size,
+        totalAmount,
+        bucket: audience.delinquencyBucket
       }
     };
+
   } catch (error) {
     console.error('Error syncing audience:', error);
-    return { success: false, error: "Error al sincronizar audiencia" };
+    return { 
+      success: false, 
+      error: "Error al sincronizar audiencia",
+      details: error instanceof Error ? error.message : undefined
+    };
   }
 }

@@ -117,22 +117,32 @@ export const columns: ColumnDef<any>[] = [
       return <div>{row.getValue("notes") || "Sin concepto"}</div>
     },
   },
+/*   {
+    accessorKey: "audiences ",
+    header: "Audiencias",
+    cell: ({ row }) => {
+      return <div
+        className="w-[120px]"
+      >{row.original.audiences.map((audience: any) => audience.name).join(", ")}</div>
+    },
+  }, */
   {
     accessorKey: "campaign",
     header: "Campaña",
     cell: ({ row }) => {
-      const campaign = row.original.campaign as Campaign | null;
+      const campaignByAudience = row.original.audiences.map((audience: any) => audience.campaigns).flat()
+      const campaign = campaignByAudience.length > 0 ? campaignByAudience[0] : null
       
       if (!campaign) {
         return (
-          <span className="text-muted-foreground text-sm">
+          <span className="text-muted-foreground text-sm w-[120px]">
             Sin campaña
           </span>
         );
       }
 
       return (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 w-[120px]">
           <span className="text-sm font-medium">
             {campaign.name}
           </span>

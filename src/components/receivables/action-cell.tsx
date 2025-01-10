@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { MoreHorizontal, Phone, DollarSign, Trash2, Pencil } from "lucide-react"
+import { MoreHorizontal, Phone, DollarSign, Trash2, Pencil, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast"
 import { ReceivableWithContact } from "@/types/receivables"
 import { initiateCall, registerPayment, markAsOverdue, deleteReceivable } from "@/actions/receivables"
 import { EditReceivableDrawer } from "./edit-receivable-drawer"
-
+import { sendWhatsappNotification } from "@/actions/whatsapp"
 interface ActionCellProps {
   receivable: ReceivableWithContact
 }
@@ -55,6 +55,18 @@ export function ActionCell({ receivable }: ActionCellProps) {
       });
     }
   };
+
+  const handleSendWhatsappNotification = async () => {
+    try {
+      const result = await sendWhatsappNotification(receivable.id)
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo enviar la notificación"
+      })
+    }
+  }
 
   const handleRegisterPayment = async () => {
     try {
@@ -136,6 +148,10 @@ export function ActionCell({ receivable }: ActionCellProps) {
           <DropdownMenuItem onClick={handleCall}>
             <Phone className="mr-2 h-4 w-4" />
             Llamar
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleSendWhatsappNotification}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Enviar recordatorio
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleRegisterPayment}>
             <DollarSign className="mr-2 h-4 w-4" />

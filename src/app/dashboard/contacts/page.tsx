@@ -3,23 +3,32 @@ import { ContactsTable } from "@/components/contacts/contacts-table"
 import { columns } from "@/components/contacts/columns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getContacts } from "@/actions/contacts"
+import { TableSkeleton } from "@/components/table-skeleton"
+import { Contact, ContactPhone } from "@prisma/client"
+
+interface ContactWithPhones extends Contact {
+  phones: ContactPhone[];
+}
 
 export const metadata = {
- title: "Clientes",
- description: "Gestiona tus clientes y sus cobros",
+  title: "Clientes",
+  description: "Gestiona tus clientes y sus cobros",
 }
 
 export default async function ContactsPage() {
   const contactsData = await getContacts();
+  
   const contacts = contactsData.map(contact => ({
     ...contact,
-    phones: contact.contactPhone
-  })) as any[];
+    createdAt: contact.createdAt.toISOString(),
+    updatedAt: contact.updatedAt.toISOString(),
+    phones: contact.phones.map(phone => ({
+      ...phone,
+      createdAt: phone.createdAt.toISOString(),
+      updatedAt: phone.updatedAt.toISOString()
+    }))
+  }));
 
-
-
-  console.log("contacts", contacts)
-  console.log("contacts phones", contacts[0].contactPhone)
   return (
     <div className="container mx-auto py-6">
       <div className="mb-8">
@@ -31,7 +40,9 @@ export default async function ContactsPage() {
             </p>
           </div>
         ) : (
-          <ContactsTable columns={columns} data={contacts} />
+          <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
+            <ContactsTable columns={columns} data={contacts} />
+          </Suspense>
         )}
       </div>
     </div>

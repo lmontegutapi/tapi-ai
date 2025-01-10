@@ -23,6 +23,69 @@ const emailPreferenceSchema = z.object({
   isEnabled: z.boolean()
 })
 
+const settingsSchema = z.object({
+  payments: z.object({
+    CASH: z.boolean(),
+    BANK_TRANSFER: z.boolean(),
+    DIGITAL_WALLET: z.boolean(),
+    CARD: z.boolean()
+  }),
+  communication: z.object({
+    whatsapp: z.object({
+      enabled: z.boolean()
+    }),
+    voiceAI: z.object({
+      enabled: z.boolean()
+    }),
+    email: z.object({
+      enabled: z.boolean()
+    })
+  })
+});
+
+export async function updateSettings(
+  settings: z.infer<typeof settingsSchema>
+) {
+  try {
+    const session = await serverSession();
+    if (!session) {
+      return { success: false, error: "No autorizado" }
+    }
+
+    const organization = await prisma.organization.findFirst({
+      where: {
+        members: {
+          some: {
+            userId: session.session.userId,
+            role: "owner"
+          }
+        }
+      }
+    });
+
+    if (!organization) {
+      return { success: false, error: "Organización no encontrada o sin permisos" }
+    }
+
+    const updatedOrg = await prisma.organization.update({
+      where: { id: organization.id },
+      data: {
+        settings: settings
+      }
+    });
+
+    revalidatePath('/dashboard/settings');
+    return { success: true, data: updatedOrg }
+
+  } catch (error) {
+    console.error('Error updating settings:', error)
+    return {
+      success: false,
+      error: "Error al actualizar la configuración"
+    }
+  }
+}
+
 export async function getOrganizationSettings() {
   try {
     const session = await serverSession();
@@ -45,11 +108,38 @@ export async function getOrganizationSettings() {
           }
         }
       }
-    })
+    });
+
+    // Estructura por defecto para settings
+    const defaultSettings = {
+      payments: {
+        CASH: false,
+        BANK_TRANSFER: false,
+        DIGITAL_WALLET: false,
+        CARD: false
+      },
+      communication: {
+        whatsapp: {
+          enabled: false
+        },
+        voiceAI: {
+          enabled: false
+        },
+        email: {
+          enabled: false
+        }
+      }
+    };
 
     return {
       success: true,
-      data: organization
+      data: {
+        ...organization,
+        settings: {
+          ...defaultSettings,
+          ...(organization?.settings as object || {})
+        }
+      }
     }
 
   } catch (error) {
@@ -297,5 +387,7 @@ export async function getTeamMembers() {
     }
   })
 
-  return { success: true, data: members }
+  const membersExludedAdminPlatform = members.filter(member => member.user.role !== "admin")
+
+  return { success: true, data: membersExludedAdminPlatform }
 }

@@ -1,23 +1,28 @@
 "use client"
 
+import { Campaign, Audience } from "@prisma/client"
 import { CampaignsTable } from "./table"
-import { CampaignDrawer } from "./campaigns-drawer"
 import { columns } from "./columns"
+import { CampaignsDrawer } from "./campaigns-drawer"
+import { Agent } from "@/types/agent"
 
-export function TableWrapper({ 
-  campaigns, 
-  audiences 
-}: { 
-  campaigns: any[],
-  audiences: any[]
-}) {
+interface TableWrapperProps {
+  campaigns: Campaign[]
+  agents?: Agent[]
+  audiences?: Audience[]
+}
+
+export function TableWrapper({ campaigns, agents, audiences }: TableWrapperProps) {
   return (
-    <CampaignsTable 
-      columns={columns} 
+    <CampaignsTable
+      columns={columns}
       data={campaigns}
       renderCreateButton={() => (
-        <CampaignDrawer audiences={audiences} />
+        <CampaignsDrawer
+          agents={agents}
+          audiences={audiences}
+        />
       )}
     />
-  );
+  )
 }

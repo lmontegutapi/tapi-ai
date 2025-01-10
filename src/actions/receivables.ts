@@ -18,6 +18,26 @@ interface ParsedReceivable {
   metadata?: any;
 }
 
+type ReceivableStatus = "OPEN" | "CLOSED" | "OVERDUE" | "PENDING_DUE";
+
+interface UpdateReceivableInput {
+  amountCents: number;
+  dueDate: Date;
+  status: ReceivableStatus;
+  contact: {
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+  };
+}
+
+type ReceivableMetadata = {
+  lastUpdatedAt: Date;
+  lastUpdatedBy: string;
+  lastStatus: ReceivableStatus;
+  statusChangedAt: Date;
+}
+
 export async function uploadReceivables(formData: FormData) {
   try {
     const file = formData.get('file');
@@ -136,46 +156,171 @@ export async function createReceivables(
 }
 
 export async function getReceivables() {
-  const data = await auth.api.getSession({
-    headers: headers(),
-  });
+  try {
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return {
+        success: false,
+        error: "No se pudo obtener la organización activa",
+      };
+    }
 
-  if (!data?.session.activeOrganizationId) {
+    const receivables = await prisma.receivable.findMany({
+      where: {
+        organizationId: session.session.activeOrganizationId,
+      },
+      include: {
+        contact: true,
+        audiences: {
+          include: {
+            campaigns: true
+          }
+        },
+        paymentPromises: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    console.log("Receivables111", receivables)
+
+    return { success: true, data: receivables };
+  } catch (error) {
+    console.error("Error getting receivables:", error);
     return {
       success: false,
-      error: "No se pudo obtener la organización activa",
+      error: "Error al obtener las deudas"
     };
   }
-
-  const receivables = await prisma.receivable.findMany({
-    where: {
-      organizationId: data.session.activeOrganizationId,
-    },
-    include: {
-      contact: true,
-      campaign: true,
-    },
-  });
-
-  return receivables;
 }
 
-const paymentSchema = z.object({
-  amountCents: z.number().positive(),
-  paymentDate: z.date(),
-  paymentMethod: z.enum([
-    "CASH",
-    "CREDIT_CARD",
-    "DEBIT_CARD",
-    "BANK_TRANSFER",
-    "MERCADO_PAGO",
-    "UALA",
-    "MODO",
-    "PERSONAL_PAY",
-    "OTHER",
-  ]),
-  notes: z.string().optional(),
-});
+export async function updateReceivable(
+  receivableId: string, 
+  data: UpdateReceivableInput
+) {
+  try {
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return { 
+        success: false, 
+        error: "No autorizado" 
+      }
+    }
+
+    const validatedData = updateReceivableSchema.parse(data)
+
+    const receivable = await prisma.receivable.findFirst({
+      where: {
+        id: receivableId,
+        organizationId: session.session.activeOrganizationId
+      },
+      include: {
+        contact: true
+      }
+    })
+
+    if (!receivable) {
+      return {
+        success: false,
+        error: "Deuda no encontrada"
+      }
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Actualizar contacto
+      const updatedContact = await tx.contact.update({
+        where: { id: receivable.contact.id },
+        data: {
+          name: validatedData.contact.name,
+          phone: validatedData.contact.phone || null,
+          email: validatedData.contact.email || null
+        }
+      })
+
+      const isPastDue = validatedData.dueDate < new Date()
+      const currentMetadata = receivable.metadata as ReceivableMetadata ?? {}
+
+      const updatedReceivable = await tx.receivable.update({
+        where: { id: receivableId },
+        data: {
+          amountCents: validatedData.amountCents,
+          dueDate: validatedData.dueDate,
+          status: validatedData.status,
+          isPastDue,
+          isOpen: validatedData.status === "OPEN" || validatedData.status === "PENDING_DUE",
+          metadata: {
+            ...currentMetadata,
+            lastUpdatedAt: new Date(),
+            lastUpdatedBy: session.user.id,
+            lastStatus: receivable.status,
+            statusChangedAt: receivable.status !== validatedData.status ? new Date() : currentMetadata.statusChangedAt
+          }
+        },
+        include: {
+          contact: true,
+          audiences: true
+        }
+      })
+
+      return updatedReceivable
+    })
+
+    revalidatePath('/dashboard/receivables')
+    return { success: true, data: result }
+
+  } catch (error) {
+    console.error('Error updating receivable:', error)
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Datos inválidos",
+        errors: error.errors
+      }
+    }
+
+    return {
+      success: false,
+      error: "Error al actualizar la deuda"
+    }
+  }
+}
+
+export async function deleteReceivable(receivableId: string) {
+  try {
+    const session = await serverSession();
+    if (!session?.session?.activeOrganizationId) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    const receivable = await prisma.receivable.findFirst({
+      where: {
+        id: receivableId,
+        organizationId: session.session.activeOrganizationId
+      }
+    });
+
+    if (!receivable) {
+      return { success: false, error: "Deuda no encontrada" };
+    }
+
+    await prisma.receivable.delete({
+      where: { id: receivableId }
+    });
+
+    revalidatePath("/dashboard/receivables");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting receivable:", error);
+    return { success: false, error: "Error al eliminar la deuda" };
+  }
+}
+
 
 export async function initiateCall(receivableId: string, campaignId?: string, isManual: boolean = false, phoneNumber?: string) {
   try {
@@ -283,84 +428,6 @@ export async function initiateCall(receivableId: string, campaignId?: string, is
   }
 }
 
-export async function registerPayment(
-  receivableId: string,
-  data: z.infer<typeof paymentSchema>
-) {
-  try {
-    const session = await serverSession();
-    if (!session) {
-      return { success: false, error: "No autorizado" };
-    }
-
-    // Validar datos
-    const validatedData = paymentSchema.parse(data);
-
-    // Generar paymentId único
-    const paymentId = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    // Actualizar en una transacción
-    const result = await prisma.$transaction(async (tx) => {
-      // Crear la transacción de pago
-      const paymentTransaction = await tx.paymentTransaction.create({
-        data: {
-          paymentLinkId: paymentId, // Usamos el paymentId como linkId
-          amountCents: validatedData.amountCents,
-          status: "COMPLETED",
-          paymentMethod: validatedData.paymentMethod,
-          paymentReference: paymentId,
-          metadata: {
-            notes: validatedData.notes,
-            receivableId,
-            type: "MANUAL_PAYMENT",
-          },
-        },
-      });
-
-      // Actualizar receivable
-      const updatedReceivable = await tx.receivable.update({
-        where: { id: receivableId },
-        data: {
-          status: "CLOSED",
-          paymentId,
-          isOpen: false,
-          metadata: {
-            paymentMethod: validatedData.paymentMethod,
-            paymentDate: validatedData.paymentDate,
-            notes: validatedData.notes,
-            paymentTransactionId: paymentTransaction.id,
-          },
-        },
-      });
-
-      return {
-        receivable: updatedReceivable,
-        transaction: paymentTransaction,
-      };
-    });
-
-    revalidatePath("/dashboard/receivables");
-
-    return {
-      success: true,
-      data: result,
-    };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: "Datos de pago inválidos",
-        errors: error.errors,
-      };
-    }
-
-    console.error("Error registrando pago:", error);
-    return {
-      success: false,
-      error: "Error al registrar el pago",
-    };
-  }
-}
 
 export async function markAsOverdue(receivableId: string) {
   try {
@@ -438,155 +505,165 @@ const updateReceivableSchema = z.object({
   })
 })
 
-interface ReceivableMetadata {
-  lastUpdatedAt?: Date
-  lastUpdatedBy?: string
-  lastStatus?: string
-  statusChangedAt?: Date
-  notes?: string
-  paymentAttempts?: number
-  callAttempts?: number
-  [key: string]: any // Para metadata adicional flexible
-}
 
-type UpdateReceivableInput = z.infer<typeof updateReceivableSchema>;
-
-export async function updateReceivable(
-  receivableId: string, 
-  data: UpdateReceivableInput
-) {
+export async function getReceivablesByContact(contactId: string) {
   try {
-    const session = await serverSession();
-    if (!session?.session?.activeOrganizationId) {
-      return { 
-        success: false, 
-        error: "No autorizado" 
-      }
-    }
-
-    const validatedData = updateReceivableSchema.parse(data)
-
-    // Verificar que el receivable existe y pertenece a la organización del usuario
-    const receivable = await prisma.receivable.findFirst({
+    const receivables = await prisma.receivable.findMany({
       where: {
-        id: receivableId,
-        organizationId: session.session.activeOrganizationId
+        contactId,
+        isOpen: true
+      },
+      orderBy: {
+        dueDate: 'asc'
       },
       include: {
-        contact: true
+        paymentPromises: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1 
+        },
+        calls: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
       }
-    })
+    });
 
-    if (!receivable) {
+    if (!receivables.length) {
       return {
         success: false,
-        error: "Deuda no encontrada"
-      }
+        error: "No se encontraron deudas para este contacto"
+      };
     }
 
-    // Actualizar en una transacción
-    const result = await prisma.$transaction(async (tx) => {
-      // Actualizar información del contacto
-      const updatedContact = await tx.contact.update({
-        where: { id: receivable.contact.id },
-        data: {
-          name: validatedData.contact.name,
-          phone: validatedData.contact.phone || null,
-          email: validatedData.contact.email || null
-        }
-      })
-
-      // Calcular si está vencida basado en la fecha
-      const isPastDue = validatedData.dueDate < new Date()
-
-      // Actualizar el receivable
-      const currentMetadata = receivable.metadata as ReceivableMetadata || {}
-
-      const updatedReceivable = await tx.receivable.update({
-        where: { id: receivableId },
-        data: {
-          amountCents: validatedData.amountCents,
-          dueDate: validatedData.dueDate,
-          status: validatedData.status,
-          isPastDue,
-          isOpen: validatedData.status === "OPEN" || validatedData.status === "PENDING_DUE",
-          metadata: {
-            ...currentMetadata,
-            lastUpdatedAt: new Date(),
-            lastUpdatedBy: session.user.id,
-            lastStatus: receivable.status,
-            statusChangedAt: receivable.status !== validatedData.status ? new Date() : currentMetadata.statusChangedAt
+    // Buscamos el contacto y la configuración de pagos en organization settings
+    const contact = await prisma.contact.findUnique({
+      where: { id: contactId },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            settings: true
           }
-        },
-        include: {
-          contact: true
         }
-      })
+      }
+    });
 
-      return updatedReceivable
-    })
+    if (!contact) {
+      return {
+        success: false,
+        error: "Contacto no encontrado"
+      };
+    }
 
-    revalidatePath('/dashboard/receivables')
+    // Obtener métodos de pago habilitados de los settings
+    const enabledPaymentMethods = Object.entries(contact.organization?.settings?.payments || {})
+      .filter(([_, enabled]) => enabled)
+      .map(([method]) => method);
 
     return {
       success: true,
-      data: result
-    }
+      data: {
+        receivables,
+        contact,
+        paymentMethods: enabledPaymentMethods
+      }
+    };
 
   } catch (error) {
-    console.error('Error actualizando receivable:', error)
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: "Datos inválidos",
-        errors: error.errors
-      }
-    }
-
+    console.error("Error obteniendo receivables del contacto:", error);
     return {
-      success: false,
-      error: "Error al actualizar la deuda"
-    }
+      success: false, 
+      error: "Error al obtener las deudas del contacto"
+    };
   }
 }
 
-export async function deleteReceivable(receivableId: string) {
+export async function registerPayment(
+  receivableId: string,
+  data: z.infer<typeof paymentSchema>
+) {
   try {
     const session = await serverSession();
     if (!session) {
       return { success: false, error: "No autorizado" };
     }
 
-    // Verificar que el receivable existe y pertenece a la organización
-    const receivable = await prisma.receivable.findFirst({
-      where: {
-        id: receivableId,
-        organizationId: session.session.activeOrganizationId || "",
-      },
-    });
+    const validatedData = paymentSchema.parse(data);
+    const paymentId = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    if (!receivable) {
-      return { success: false, error: "Deuda no encontrada" };
-    }
-
-    // No permitir eliminar si está en una campaña activa
-    if (receivable.campaignId) {
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: receivable.campaignId }
+    // Crear el invoice directamente
+    const result = await prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.create({
+        data: {
+          receivableId,
+          invoiceNumber: paymentId,
+          amountCents: validatedData.amountCents,
+          paymentMethod: validatedData.paymentMethod,
+          emissionDate: new Date(),
+          paymentDate: validatedData.paymentDate,
+          status: "PAID",
+          metadata: {
+            notes: validatedData.notes,
+            type: "MANUAL_PAYMENT"
+          }
+        }
       });
-      if (campaign?.status === "ACTIVE") {
-        return { success: false, error: "No se puede eliminar una deuda en una campaña activa" };
-      }
-    }
 
-    await prisma.receivable.delete({
-      where: { id: receivableId },
+      const updatedReceivable = await tx.receivable.update({
+        where: { id: receivableId },
+        data: {
+          status: "CLOSED",
+          paymentId,
+          isOpen: false,
+          metadata: {
+            paymentMethod: validatedData.paymentMethod,
+            paymentDate: validatedData.paymentDate,
+            notes: validatedData.notes,
+            invoiceId: invoice.id
+          }
+        }
+      });
+
+      return {
+        receivable: updatedReceivable,
+        invoice
+      };
     });
 
     revalidatePath("/dashboard/receivables");
-    return { success: true };
+    return { success: true, data: result };
+
   } catch (error) {
-    console.error("Error deleting receivable:", error);
-    return { success: false, error: "Error al eliminar la deuda" };
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Datos de pago inválidos",
+        errors: error.errors
+      };
+    }
+
+    console.error("Error registrando pago:", error);
+    return {
+      success: false,
+      error: "Error al registrar el pago"
+    };
   }
 }
+
+// Ajustar el schema de pago para los nuevos tipos
+const paymentSchema = z.object({
+  amountCents: z.number().positive(),
+  paymentDate: z.date(),
+  paymentMethod: z.enum([
+    "CASH",
+    "BANK_TRANSFER",
+    "DIGITAL_WALLET",
+    "CARD"
+  ]),
+  notes: z.string().optional()
+});

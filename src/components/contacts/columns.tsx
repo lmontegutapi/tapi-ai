@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { Contact } from "@/types/contacts";
 import { MoreHorizontal, FileText, CircleDollarSign, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ function ActionsCell({ row }: { row: any }) {
 
   const copyPaymentLink = () => {
     navigator.clipboard.writeText(
-      `${window.location.origin}/pay/${contact.id}`
+      `${window.location.origin}/payment/${contact.id}`
     );
     toast({
       title: "Link copiado",
@@ -61,10 +61,10 @@ function ActionsCell({ row }: { row: any }) {
 }
 
 interface ContactWithPhones extends Contact {
-  contactPhone: ContactPhone[];
+  phones: ContactPhone[];
 }
 
-export const columns: ColumnDef<ContactWithPhones>[] = [
+export const columns: ColumnDef<ContactWithPhones, any>[] = [
   {
     accessorKey: "name",
     header: "Nombre",
@@ -82,29 +82,37 @@ export const columns: ColumnDef<ContactWithPhones>[] = [
     },
   },
   {
-    accessorKey: "contactPhone",
+    accessorKey: "phones",
     header: "Teléfonos",
     cell: ({ row }) => {
-      const phones = row.original.contactPhone;
+      const mainPhone = row.original.phone;
+      const additionalPhones = row.original.phones;
+      
       return (
         <div className="space-y-1">
-            {phones?.map((phone) => (
-              <div key={phone.id} className="text-sm">
-                <Badge variant={phone.isPrimary ? "default" : "secondary"}>
-                  {phone.type}
-                </Badge>{" "}
-                {phone.phone}
-              </div>
-            ))}
-          </div>
-        );
-      },
+          {mainPhone && (
+            <div className="text-sm">
+              <Badge variant="default">MAIN</Badge>{" "}
+              <span>{mainPhone}</span>
+            </div>
+          )}
+          {additionalPhones?.map((phone) => (
+            <div key={phone.id} className="text-sm">
+              <Badge variant="secondary">{phone.type}</Badge>{" "}
+              <span>{phone.phone}</span>
+            </div>
+          ))}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "createdAt",
     header: "Fecha de registro",
     cell: ({ row }) => {
-      return new Date(row.original.createdAt).toLocaleDateString();
+      const createdAt = new Date(row.original.createdAt);
+      const formattedDate = createdAt.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      return <p>{formattedDate}</p>;
     },
   },
   {

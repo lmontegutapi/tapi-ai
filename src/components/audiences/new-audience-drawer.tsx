@@ -36,6 +36,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { createAudience } from "@/actions/audiences";
 import { useActiveOrganization } from "@/lib/auth-client";
 import { useEffect } from "react";
+import { useOrganizationSettings } from "@/hooks/useOrganizationSettings";
+import { ContactChannel, DelinquencyBucket } from "@prisma/client";
 
 const audienceSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -60,12 +62,28 @@ export function NewAudienceDrawer({ classNameButton, variantButton }: NewAudienc
   const { openNewAudienceDrawer, setOpenNewAudienceDrawer } = useAudiencesStore();
   const router = useRouter();
   const activeOrganization = useActiveOrganization();
+
+  const { data: orgSettings } = useOrganizationSettings();
+
+  console.log("orgSettings", orgSettings);
+
+  // Obtener canales habilitados
+  const availableChannels: { value: string; label: string }[] = [];
+  if (orgSettings?.settings?.communication?.whatsapp?.enabled) {
+    availableChannels.push({ value: "WHATSAPP", label: "WhatsApp" });
+  }
+  if (orgSettings?.settings?.communication?.voiceAI?.enabled) {
+    availableChannels.push({ value: "VOICE_AI", label: "Llamada" });
+  }
+  if (orgSettings?.settings?.communication?.email?.enabled) {
+    availableChannels.push({ value: "EMAIL", label: "Email" });
+  }
   
   const form = useForm<z.infer<typeof audienceSchema>>({
     resolver: zodResolver(audienceSchema),
     defaultValues: {
-      delinquencyBucket: "CURRENT",
-      contactPreference: "WHATSAPP"
+      delinquencyBucket: DelinquencyBucket.CURRENT,
+      contactPreference: ContactChannel.WHATSAPP
     }
   });
 
@@ -79,12 +97,16 @@ export function NewAudienceDrawer({ classNameButton, variantButton }: NewAudienc
         throw new Error("No se pudo obtener la organización activa");
       }
 
+      console.log("data", data);
+
       const dataWithOrganizationId = {
         ...data,
         organizationId: activeOrganization.data.id
       }
 
       const result = await createAudience(dataWithOrganizationId);
+
+      console.log("result", result);
 
       if (!result.data) {
         throw new Error(result.error || "Error al crear la audiencia");
@@ -180,24 +202,39 @@ export function NewAudienceDrawer({ classNameButton, variantButton }: NewAudienc
                   )}
                 />
 
-                <FormField
+          <FormField
                   control={form.control}
                   name="contactPreference"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Canal de Contacto</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        disabled={availableChannels.length === 0}
+                      >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar canal" />
+                            <SelectValue placeholder={
+                              availableChannels.length === 0 
+                                ? "No hay canales habilitados" 
+                                : "Seleccionar canal"
+                            } />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                          <SelectItem value="VOICE_AI">Llamada</SelectItem>
-                          <SelectItem value="EMAIL">Email</SelectItem>
+                          {availableChannels.map(channel => (
+                            <SelectItem key={channel.value} value={channel.value}>
+                              {channel.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
+                      {availableChannels.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Habilita los canales de comunicación en la configuración
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

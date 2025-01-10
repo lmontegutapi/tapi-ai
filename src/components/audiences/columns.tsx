@@ -74,6 +74,14 @@ export const columns: ColumnDef<any>[] = [
     },
   },
   {
+    accessorKey: "receivables",
+    header: "Deudas",
+    cell: ({ row }) => {
+      const receivables = row.original.receivables;
+      return <div>{receivables?.length || 0} deuda(s)</div>;
+    },
+  },
+  {
     id: "actions",
     cell: ({ row }) => <ActionCell audience={row.original} />,
   },

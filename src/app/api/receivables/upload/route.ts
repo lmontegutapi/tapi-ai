@@ -1,289 +1,364 @@
-import { NextResponse } from "next/server";
-import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
-import { z } from "zod";
-import * as XLSX from "xlsx";
-import { prisma } from "@/lib/db";
+import { prisma } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import * as XLSX from 'xlsx';
+import { chunk } from 'lodash';
+import { Redis } from 'ioredis';
+import { Prisma, Contact, ContactPhone } from '@prisma/client';
 
-export const maxDuration = 300;
+// Configuración
+const CONFIG = {
+  CHUNK_SIZE: 50,
+  MAX_RECORDS: 500, // Ajustado para límites de Vercel
+  MAX_FILE_SIZE: 5 * 1024 * 1024,
+  RATE_LIMIT: {
+    points: 1000, // Incrementado para desarrollo
+    duration: 60 * 60, // 1 hora
+  },
+  CACHE_TTL: 60 * 60 * 24, // 24 horas
+};
 
-// Schemas
-const rawDataSchema = z.object({
- identifier: z.string(),
- name: z.string(),
- phone: z.string(),
- amountCents: z.string(),
- dueDate: z.string(),
- email: z.string().optional(),
- rfc: z.string().optional(),
- address: z.string().optional(),
- additionalPhones: z.string().optional(),
- notes: z.string().optional()
-});
+// Inicializar Redis
+const redis = new Redis(process.env.REDIS_URL!);
 
-const contactSchema = z.object({
-  name: z.string(),
-  phone: z.string(),
-  identifier: z.string(),
-  email: z.string().email().optional().nullable(), // Cambio aquí
-  rfc: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
-  additionalPhones: z.string().optional().nullable(),
-});
-
-const debtSchema = z.object({
- identifier: z.string(),
- amountCents: z.coerce.number(),
- dueDate: z.string().datetime(),
- notes: z.string().optional(),
- contact: contactSchema,
-});
-
-/* async function findOrCreateContact(contactData: any, organizationId: string, tx: any) {
-
-  console.log("Creating contact with organizationId: 111", organizationId);
- let contact = await tx.contact.findFirst({
-   where: {
-     organizationId,
-     OR: [
-       { identifier: contactData.identifier },
-       { phone: contactData.phone },
-       { email: contactData.email },
-     ],
-   },
-   include: {
-     contactPhone: true,
-   },
- });
-
- console.log("Creating contact with organizationId: 222", organizationId);
-
- if (!contact && organizationId) {
-   contact = await tx.contact.create({
-     data: {
-       organizationId,
-       name: contactData.name,
-       identifier: contactData.identifier,
-       email: contactData.email || null,
-       phone: contactData.phone,
-       rfc: contactData.rfc || null,
-       address: contactData.address || null,
-       createdAt: new Date(),
-       updatedAt: new Date(),
-       contactPhone: {
-         create: [
-           { phone: contactData.phone, type: "MAIN", isPrimary: true, createdAt: new Date(), updatedAt: new Date() },
-           ...(contactData.additionalPhones?.split(",").map((phone: string) => ({
-             phone: phone.trim(),
-             type: "OTHER",
-             isPrimary: false,
-             createdAt: new Date(),
-             updatedAt: new Date()
-           })) ?? []),
-         ],
-       },
-     },
-     include: {
-       contactPhone: true,
-     },
-   });
- }
-
- return contact;
+// Rate limiting
+async function checkRateLimit(organizationId: string): Promise<boolean> {
+  const key = `ratelimit:bulk:${organizationId}`;
+  const multi = redis.multi();
+  
+  multi.get(key);
+  multi.ttl(key);
+  
+  console.log(`Checking rate limit for organization: ${organizationId}`);
+  
+  const result = await multi.exec();
+  if (!result) {
+    console.log("No rate limit data found, allowing to proceed");
+    return true;
+  }
+  
+  const [pointsResult] = result;
+  const points = String(pointsResult?.[1] || '');
+  
+  console.log(`Rate limit points: ${points}`);
+  
+  if (!points) {
+    console.log("No points found, setting new limit");
+    await redis.setex(key, CONFIG.RATE_LIMIT.duration, CONFIG.RATE_LIMIT.points - 1);
+    return true;
+  }
+  
+  const pointsRemaining = parseInt(points);
+  console.log(`Points remaining: ${pointsRemaining}`);
+  
+  if (pointsRemaining <= 0) {
+    console.log("Limit exceeded, denying access");
+    return false;
+  }
+  
+  console.log("Decrementing points, allowing access");
+  await redis.decrby(key, 1);
+  return true;
 }
- */
 
-async function findOrCreateContact(contactData: any, organizationId: string, tx: any) {
-  const contact = await tx.contact.findFirst({
+async function processDataInChunks(data: any[], organizationId: string, tx: any) {
+  console.log('Iniciando procesamiento de datos:', { 
+    totalRecords: data.length, 
+    organizationId 
+  });
+
+  const chunks = chunk(data, CONFIG.CHUNK_SIZE);
+  const results = [];
+
+  // Verificar datos de entrada
+  if (!data.length) {
+    console.log('No hay datos para procesar');
+    return [];
+  }
+
+  // Procesar contactos
+  const contactsToProcess = new Map<string, any>();
+  
+  // Primero verificar si ya existen receivables
+  const identifiers = data.map(row => {
+    const [identifier] = Object.values(row)[0].split(',');
+    return identifier;
+  });
+
+  console.log('Identificadores a procesar:', identifiers);
+
+  const existingReceivables = await tx.receivable.findMany({
     where: {
       organizationId,
-      OR: [
-        { phone: contactData.phone },
-        { email: contactData.email }
-      ]
+      identifier: {
+        in: identifiers
+      }
+    },
+    select: {
+      identifier: true
     }
   });
 
-  if (!contact) {
-    return await tx.contact.create({
-      data: {
-        organizationId,
-        name: contactData.name,
-        email: contactData.email || null,
-        phone: contactData.phone,
-        identifier: contactData.identifier,
-        rfc: contactData.rfc || null,
-        address: contactData.address || null,
-        contactPhone: {
-          create: {
-            phone: contactData.phone,
-            type: "MAIN",
-            isPrimary: true
-          }
-        }
-      }
+  console.log('Receivables existentes:', existingReceivables);
+
+  const existingIdentifiers = new Set(existingReceivables.map(r => r.identifier));
+
+  // Filtrar solo los nuevos registros
+  const newData = data.filter(row => {
+    const [identifier] = Object.values(row)[0].split(',');
+    return !existingIdentifiers.has(identifier);
+  });
+
+  console.log('Nuevos registros a procesar:', newData.length);
+
+  // Parsear los datos del archivo
+  newData.forEach(row => {
+    const rowValues = Object.values(row)[0].split(',');
+    console.log('Procesando fila:', rowValues);
+
+    const [
+      identifier,
+      name,
+      phone,
+      amountCents,
+      dueDate,
+      additionalPhones,
+      email,
+      rfc,
+      address,
+      notes
+    ] = rowValues;
+
+    if (!identifier || !name || !phone || !amountCents || !dueDate) {
+      console.error('Datos requeridos faltantes:', { identifier, name, phone, amountCents, dueDate });
+      throw new Error(`Datos requeridos faltantes para el registro con identificador: ${identifier}`);
+    }
+
+    contactsToProcess.set(identifier, {
+      identifier,
+      name,
+      phone,
+      amountCents,
+      dueDate,
+      additionalPhones,
+      email,
+      rfc,
+      address,
+      notes,
+      phones: [phone, ...(additionalPhones ? additionalPhones.split(',').filter(Boolean) : [])]
     });
-  }
+  });
 
-  return contact;
-}
+  console.log('Contactos a procesar:', contactsToProcess.size);
 
-async function validateExcelFormat(file: File): Promise<{
- success: boolean;
- error?: string;
-}> {
- try {
-   const validExtensions = [".xlsx", ".xls", ".csv"];
-   const fileName = file.name.toLowerCase();
-   const isValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+  // Crear o actualizar contactos
+  const contactsMap = new Map<string, Contact>();
 
-   if (!isValidExtension) {
-     return {
-       success: false,
-       error: "Formato de archivo no válido. Use Excel o CSV",
-     };
-   }
-
-   if (file.size > 5 * 1024 * 1024) {
-     return {
-       success: false,
-       error: "El archivo es demasiado grande. Máximo 5MB",
-     };
-   }
-
-   const buffer = await file.arrayBuffer();
-   const workbook = XLSX.read(buffer, {
-     raw: false,
-     cellDates: true,
-     dateNF: 'yyyy-mm-dd'
-   });
-   
-   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-   const headers = XLSX.utils.sheet_to_json(worksheet, { 
-     header: 1,
-     raw: false,
-     defval: ""
-   })[0] as string[];
-
-   const requiredHeaders = [
-     "identifier",
-     "name", 
-     "phone",
-     "amountCents",
-     "dueDate"  
-   ];
-   
-   const missingHeaders = requiredHeaders.filter(
-     header => !headers.some(h => h === header)
-   );
-
-   if (missingHeaders.length > 0) {
-     return {
-       success: false,
-       error: `Faltan columnas requeridas: ${missingHeaders.join(", ")}`,
-     };
-   }
-
-   return {
-     success: true,
-   };
- } catch (error) {
-   console.error("Error validando archivo:", error);
-   return {
-     success: false,
-     error: "Error al validar el archivo",
-   };
- }
-}
-
-export async function POST(req: Request) {
- if (req.method !== 'POST') {
-   return NextResponse.json(
-     { success: false, error: 'Método no permitido' }, 
-     { status: 405 }
-   );
- }
-
- try {
-   const formData = await req.formData();
-   const file = formData.get("file") as File;
-   const organizationId = formData.get("organizationId") as string;
-
-   if (!file || !organizationId) {
-     return NextResponse.json(
-       { success: false, error: "Archivo y organización son requeridos" },
-       { status: 400 }
-     );
-   }
-
-   const validation = await validateExcelFormat(file);
-   if (!validation.success) {
-     return NextResponse.json(
-       { success: false, error: validation.error },
-       { status: 400 }
-     );
-   }
-
-   const buffer = await file.arrayBuffer();
-   const workbook = XLSX.read(buffer, {
-     raw: false,
-     cellDates: true,
-     dateNF: 'yyyy-mm-dd'
-   });
-   
-   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-   const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-     raw: false,
-     defval: ""
-   });
-
-   const { object: mappedData } = await generateObject({
-     model: openai("gpt-4o-mini"),
-     schema: z.object({
-       receivables: z.array(debtSchema),
-     }),
-     prompt: `Mapea los siguientes datos a receivables. Para emails inválidos o vacíos, usa null.
-      Datos: ${JSON.stringify(jsonData)}`,
-   });
-
-   console.log("mappedData", mappedData);
-
-   const results = await prisma.$transaction(async (tx) => {
-    const createdData = [];
-
-    for (const item of mappedData.receivables) {
-      const contact = await findOrCreateContact(item.contact, organizationId, tx);
-      
-      const receivable = await tx.receivable.create({
-        data: {
-          organizationId,
-          contactId: contact.id,
-          amountCents: item.amountCents,
-          dueDate: new Date(item.dueDate),
-          status: "OPEN",
-          notes: item.notes || null
+  for (const [identifier, contactData] of contactsToProcess.entries()) {
+    try {
+      // Buscar contacto existente
+      let contact = await tx.contact.findUnique({
+        where: { 
+          organizationId_identifier: { 
+            organizationId, 
+            identifier 
+          } 
         }
       });
 
-      createdData.push(receivable);
+      console.log('Contacto existente:', contact?.id);
+
+      // Si no existe, crear nuevo contacto
+      if (!contact) {
+        contact = await tx.contact.create({
+          data: {
+            organizationId,
+            identifier,
+            name: contactData.name,
+            phone: contactData.phone?.trim() || null,
+            email: contactData.email || null,
+            rfc: contactData.rfc || null,
+            address: contactData.address || null,
+          }
+        });
+
+        console.log('Nuevo contacto creado:', contact.id);
+
+        // Crear solo los teléfonos adicionales
+        const additionalPhones = contactData.phones
+          .slice(1)
+          .filter(Boolean)
+          .map((phone: string) => ({
+            contactId: contact.id,
+            phone: phone.trim(),
+            type: 'OTHER' as const,
+            isPrimary: false
+          }));
+
+        if (additionalPhones.length > 0) {
+          const createdPhones = await tx.contactPhone.createMany({
+            data: additionalPhones,
+            skipDuplicates: true
+          });
+          console.log('Teléfonos adicionales creados:', createdPhones);
+        }
+      }
+
+      contactsMap.set(identifier, contact);
+    } catch (error) {
+      console.error('Error procesando contacto:', { identifier, error });
+      throw error;
+    }
+  }
+
+  // Procesar receivables en chunks
+  for (const chunk of chunks) {
+    try {
+      const receivablesData = chunk.map(row => {
+        const [identifier] = Object.values(row)[0].split(',');
+        const contact = contactsMap.get(identifier);
+        
+        if (!contact) {
+          throw new Error(`No se encontró contacto para el identificador: ${identifier}`);
+        }
+
+        const contactData = contactsToProcess.get(identifier);
+        
+        return {
+          organizationId,
+          contactId: contact.id,
+          identifier,
+          amountCents: parseInt(contactData.amountCents),
+          dueDate: new Date(contactData.dueDate),
+          status: 'OPEN',
+          notes: contactData.notes || null
+        };
+      });
+
+      console.log('Creando receivables:', receivablesData.length);
+
+      const createdReceivables = await tx.receivable.createMany({
+        data: receivablesData,
+        skipDuplicates: true
+      });
+
+      console.log('Receivables creados:', createdReceivables);
+
+      results.push(...receivablesData);
+    } catch (error) {
+      console.error('Error procesando chunk de receivables:', error);
+      throw error;
+    }
+  }
+
+  console.log('Proceso completado. Total resultados:', results.length);
+  return results;
+}
+
+export async function POST(req: Request) {
+  if (req.method !== 'POST') {
+    return NextResponse.json(
+      { success: false, error: 'Método no permitido' }, 
+      { status: 405 }
+    );
+  }
+
+  try {
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
+    const organizationId = formData.get("organizationId") as string;
+
+    if (!file || !organizationId) {
+      return NextResponse.json(
+        { success: false, error: "Archivo y organización son requeridos" },
+        { status: 400 }
+      );
     }
 
-    return createdData;
-  }, {
-    timeout: 20000,
-    maxWait: 25000
-  });
+    // Validar tamaño de archivo
+    if (file.size > CONFIG.MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { success: false, error: "Archivo excede el tamaño máximo permitido" },
+        { status: 400 }
+      );
+    }
 
-   return NextResponse.json({
-     success: true,
-     data: results,
-   });
-   
- } catch (error) {
-   console.error("Error procesando archivo:", error);
-   return NextResponse.json(
-     { success: false, error: "Error procesando archivo" },
-     { status: 500 }
-   );
- }
+    // Rate limiting
+    const canProceed = await checkRateLimit(organizationId);
+    if (!canProceed) {
+      return NextResponse.json(
+        { success: false, error: "Límite de procesamiento excedido. Intente más tarde." },
+        { status: 429 }
+      );
+    }
+
+    // Calcular hash del archivo para caché
+    const fileBuffer = await file.arrayBuffer();
+    const fileHash = await crypto.subtle.digest('SHA-256', fileBuffer);
+    const hashString = Array.from(new Uint8Array(fileHash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    // Verificar caché
+    const cachedResult = await redis.get(`result:${hashString}`);
+    if (cachedResult) {
+      return NextResponse.json({
+        success: true,
+        data: JSON.parse(cachedResult),
+        cached: true
+      });
+    }
+
+    // Leer archivo
+    const workbook = XLSX.read(fileBuffer, {
+      raw: false,
+      cellDates: true,
+      dateNF: 'yyyy-mm-dd'
+    });
+    
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+      raw: false,
+      defval: ""
+    });
+
+    // Validar número máximo de registros
+    if (jsonData.length > CONFIG.MAX_RECORDS) {
+      return NextResponse.json(
+        { success: false, error: `Máximo ${CONFIG.MAX_RECORDS} registros permitidos` },
+        { status: 400 }
+      );
+    }
+
+    // Procesar datos en transacción
+    const results = await prisma.$transaction(async (tx) => {
+      return await processDataInChunks(jsonData, organizationId, tx);
+    }, {
+      timeout: 58000, // Ajustado para límite de Vercel
+      maxWait: 59000,
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+    });
+
+    // Cachear resultados
+    await redis.setex(
+      `result:${hashString}`,
+      CONFIG.CACHE_TTL,
+      JSON.stringify(results)
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: results,
+    });
+    
+  } catch (error) {
+    console.error("Error procesando archivo:", error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: "Error procesando archivo",
+        details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+      },
+      { status: 500 }
+    );
+  }
 }

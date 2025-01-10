@@ -26,14 +26,14 @@ import {
 import { EmptyContacts } from "@/components/contacts/empty-contacts";
 import { UserPlus } from "lucide-react";
 import Link from "next/link";
-import { PhoneType } from "@prisma/client";
+import { ContactPhone } from "@prisma/client";
 
-interface ContactsTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+interface ContactsTableProps<TData> {
+  columns: ColumnDef<TData, any>[];
   data: TData[];
 }
 
-type ContactWithPhones = {
+interface ContactWithPhones {
   id: string;
   name: string;
   email: string | null;
@@ -42,26 +42,20 @@ type ContactWithPhones = {
   address: string | null;
   identifier: string | null;
   organizationId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   metadata: any;
   paymentTerms: number | null;
-  phones: {
-    id: string;
-    phone: string;
-    type: PhoneType;
-    description: string | null;
-    isPrimary: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    contactId: string;
+  phones: Omit<ContactPhone, 'createdAt' | 'updatedAt'> & {
+    createdAt: string;
+    updatedAt: string;
   }[];
-};
+}
 
-export function ContactsTable<TData, TValue>({
+export function ContactsTable<TData extends ContactWithPhones>({
   columns,
   data,
-}: ContactsTableProps<TData, TValue>) {
+}: ContactsTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});

@@ -1,10 +1,9 @@
-
 import { Suspense } from "react";
 import { Separator } from "@/components/ui/separator";
 import { CampaignsTable } from "@/components/campaigns/table";
 import { columns } from "@/components/campaigns/columns";
 import { TableSkeleton } from "@/components/table-skeleton";
-import { CampaignDrawer } from "@/components/campaigns/campaigns-drawer";
+import { CampaignsDrawer } from "@/components/campaigns/campaigns-drawer";
 import { getCampaigns } from "@/actions/campaigns";
 import { EmptyCampaigns } from "@/components/campaigns/empty-campaigns";
 import { getAudiences } from "@/actions/audiences";
@@ -20,9 +19,6 @@ export default async function CampaignsPage() {
   const campaigns = campaignsResult || [];
   const audiences = audiencesResult.data || [];
 
-  console.log("campaignsResult", campaignsResult);
-  console.log("audiencesResult", audiencesResult);
-
   return (
     <div className="flex-1 space-y-4 p-4 pt-6">
       <div className="flex items-center justify-between">
@@ -32,21 +28,17 @@ export default async function CampaignsPage() {
             Gestiona tus campañas de cobranza y realiza llamadas automáticas
           </p>
         </div>
-       {/*  <CampaignDrawer audiences={audiencesResult.data} /> */}
       </div>
       <Separator />
       {!campaigns.length ? (
-        <EmptyCampaigns />
+        <EmptyCampaigns agents={[]} audiences={audiences} />
       ) : (
         <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
-          <TableWrapper campaigns={campaigns} audiences={audiences} />
-          {/* <CampaignsTable 
-            columns={columns} 
-            data={campaigns}
-            renderCreateButton={() => (
-              <CampaignDrawer audiences={audiences} />
-            )}
-          /> */}
+          <TableWrapper 
+            campaigns={campaigns} 
+            agents={[]} 
+            audiences={audiences} 
+          />
         </Suspense>
       )}
     </div>

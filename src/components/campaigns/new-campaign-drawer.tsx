@@ -71,8 +71,8 @@ interface Agent {
 }
 
 interface NewCampaignDrawerProps {
-  agents: Agent[];
-  receivables: ReceivableWithContact[];
+  agents?: Agent[] | undefined;
+  receivables?: ReceivableWithContact[] | undefined;
 }
 
 type CampaignFormValues = z.infer<typeof campaignSchema>;

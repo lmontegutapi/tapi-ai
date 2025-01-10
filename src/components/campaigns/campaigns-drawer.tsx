@@ -3,21 +3,27 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Campaign } from "@prisma/client"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet"
 import { toast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { CampaignForm } from "./campaigns-form"
+import { Loader2, Plus } from "lucide-react"
 import { createCampaign, updateCampaign } from "@/actions/campaigns"
 import { Audience } from "@prisma/client"
+import { CampaignForm } from "./campaigns-form"
 
-interface CampaignDrawerProps {
+interface CampaignsDrawerProps {
   campaign?: Campaign;
-  audiences: Audience[];
+  agents?: any[];
+  audiences?: Audience[];
   trigger?: React.ReactNode;
 }
 
-export function CampaignDrawer({ campaign, audiences, trigger }: CampaignDrawerProps) {
+export function CampaignsDrawer({ 
+  campaign, 
+  agents, 
+  audiences,
+  trigger 
+}: CampaignsDrawerProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
@@ -26,9 +32,7 @@ export function CampaignDrawer({ campaign, audiences, trigger }: CampaignDrawerP
     setIsSubmitting(true)
     try {
       const action = campaign ? updateCampaign : createCampaign
-      const result = campaign 
-        ? await updateCampaign(campaign.id, data)
-        : await createCampaign(data)
+      const result = await action(data)
 
       if (!result.success) {
         throw new Error(result.error)
@@ -58,22 +62,30 @@ export function CampaignDrawer({ campaign, audiences, trigger }: CampaignDrawerP
         {trigger || (
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva Campaña
+            {campaign ? "Editar Campaña" : "Nueva Campaña"}
           </Button>
         )}
       </SheetTrigger>
-      <SheetContent className="max-w-max min-w-[540px]">
-        <SheetHeader>
+      <SheetContent side="right" className="w-full max-w-[1000px] sm:w-[800px] overflow-y-auto">
+        <SheetHeader className="space-y-2">
           <SheetTitle>
             {campaign ? "Editar Campaña" : "Nueva Campaña"}
           </SheetTitle>
+          <SheetDescription>
+            {campaign 
+              ? "Modifica los detalles de la campaña existente" 
+              : "Configura una nueva campaña de llamadas automáticas"}
+          </SheetDescription>
         </SheetHeader>
-        <CampaignForm 
-          campaign={campaign}
-          audiences={audiences}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-        />
+        <div className="mt-6">
+          <CampaignForm
+            campaign={campaign}
+            agents={agents}
+            audiences={audiences}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+          />
+        </div>
       </SheetContent>
     </Sheet>
   )

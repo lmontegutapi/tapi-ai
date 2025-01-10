@@ -9,7 +9,8 @@ import { NewReceivableDrawer } from "@/components/receivables/new-receivable-dra
 
 export default async function ReceivablesPage() {
   const receivablesResponse = await getReceivables();
-  const receivables = Array.isArray(receivablesResponse) ? receivablesResponse : [];
+  console.log("ReceivablesResponse", receivablesResponse)
+  const receivables = Array.isArray(receivablesResponse.data) ? receivablesResponse.data : [];
 
   return (
     <div className="container py-6">

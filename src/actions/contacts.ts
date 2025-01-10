@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/db";
-import { PhoneType } from "@prisma/client";
+import { Contact, ContactPhone, PhoneType } from "@prisma/client";
 import { session as serverSession } from "@/lib/auth-server";
-export async function getContacts() {
+
+export async function getContacts(): Promise<(Contact & { phones: ContactPhone[] })[]> {
   try {
     const contacts = await prisma.contact.findMany({
       include: {
-        contactPhone: true,
+        phones: true,
       },
       orderBy: {
         createdAt: "desc",
@@ -38,7 +39,7 @@ export async function updateContact(id: string, data: {
     const contact = await prisma.$transaction(async (tx) => {
       const existingContact = await tx.contact.findUnique({
         where: { id },
-        include: { contactPhone: true }
+        include: { phones: true }
       });
  
       if (!existingContact) {
@@ -59,11 +60,11 @@ export async function updateContact(id: string, data: {
           phone: data.phone,
           rfc: data.rfc || null,
           address: data.address || null,
-          contactPhone: {
+          phones: {
             create: [
               {
                 phone: data.phone,
-                type: "MAIN",
+                type: PhoneType.MAIN,
                 isPrimary: true,
                 updatedAt: new Date()
               },
@@ -76,7 +77,7 @@ export async function updateContact(id: string, data: {
             ]
           }
         },
-        include: { contactPhone: true }
+        include: { phones: true }
       });
     });
  
@@ -89,3 +90,110 @@ export async function updateContact(id: string, data: {
     };
   }
  }
+
+ export async function getContactDetails(contactId: string) {
+  try {
+    const session = await serverSession();
+    if (!session) return null;
+
+    const contact = await prisma.contact.findUnique({
+      where: { 
+        id: contactId,
+        organizationId: session?.session?.activeOrganizationId || ''
+      },
+      include: {
+        receivables: {
+          include: {
+            invoices: true,
+            paymentPromises: true
+          },
+          orderBy: {
+            dueDate: 'desc'
+          },
+          take: 7
+        },
+        phones: true
+      }
+    });
+
+    if (!contact) return null;
+
+    // Calcular métricas de pago
+    const totalReceivables = contact.receivables.length;
+    const paidReceivables = contact.receivables.filter(r => 
+      r.status === 'CLOSED' || r.status === 'PARTIALLY_PAID'
+    ).length;
+    const paymentRatio = totalReceivables > 0 
+      ? (paidReceivables / totalReceivables) * 100 
+      : 0;
+
+    // Categorización de pagador
+    let payerCategory = 'Sin historial';
+    if (paymentRatio === 100) payerCategory = 'Excelente';
+    else if (paymentRatio >= 80) payerCategory = 'Bueno';
+    else if (paymentRatio >= 50) payerCategory = 'Regular';
+    else payerCategory = 'Malo';
+
+    return {
+      ...contact,
+      paymentMetrics: {
+        totalReceivables,
+        paidReceivables,
+        paymentRatio,
+        payerCategory
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching contact details:', error);
+    return null;
+  }
+}
+
+export async function getContactReceivablesPaginated(
+  contactId: string, 
+  page: number = 1, 
+  pageSize: number = 10
+) {
+  try {
+    const session = await serverSession();
+    if (!session) return null;
+
+    const skip = (page - 1) * pageSize;
+
+    const receivables = await prisma.receivable.findMany({
+      where: { 
+        contactId,
+        organizationId: session?.session?.activeOrganizationId || ''
+      },
+      include: {
+        invoices: true,
+        paymentPromises: true
+      },
+      orderBy: {
+        dueDate: 'desc'
+      },
+      skip,
+      take: pageSize
+    });
+
+    const total = await prisma.receivable.count({
+      where: { 
+        contactId,
+        organizationId: session?.session?.activeOrganizationId || ''
+      }
+    });
+
+    return {
+      receivables,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize)
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching paginated receivables:', error);
+    return null;
+  }
+}

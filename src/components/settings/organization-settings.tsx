@@ -95,13 +95,13 @@ export function OrganizationSettings({
               />
               <AvatarFallback>{organization.name.charAt(0)}</AvatarFallback>
             </Avatar>
-            {/*           <Button variant="outline"
+            <Button variant="outline"
               onClick={() => {
                 // Implementar lógica para cambiar el logo
               }}
             >
               Cambiar logo
-            </Button> */}
+            </Button>
           </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

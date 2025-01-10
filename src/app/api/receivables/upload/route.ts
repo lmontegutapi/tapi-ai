@@ -79,7 +79,11 @@ async function processDataInChunks(data: any[], organizationId: string, tx: any)
   const contactsToProcess = new Map<string, any>();
   
   // Primero verificar si ya existen receivables
-  const identifiers = data.map(row => {
+  interface RowData {
+    [key: string]: string;
+  }
+
+  const identifiers = data.map((row: RowData) => {
     const [identifier] = Object.values(row)[0].split(',');
     return identifier;
   });
@@ -100,10 +104,10 @@ async function processDataInChunks(data: any[], organizationId: string, tx: any)
 
   console.log('Receivables existentes:', existingReceivables);
 
-  const existingIdentifiers = new Set(existingReceivables.map(r => r.identifier));
+  const existingIdentifiers = new Set(existingReceivables.map((r: { identifier: string }) => r.identifier));
 
   // Filtrar solo los nuevos registros
-  const newData = data.filter(row => {
+  const newData = data.filter((row: RowData) => {
     const [identifier] = Object.values(row)[0].split(',');
     return !existingIdentifiers.has(identifier);
   });
@@ -111,7 +115,7 @@ async function processDataInChunks(data: any[], organizationId: string, tx: any)
   console.log('Nuevos registros a procesar:', newData.length);
 
   // Parsear los datos del archivo
-  newData.forEach(row => {
+  newData.forEach((row: RowData) => {
     const rowValues = Object.values(row)[0].split(',');
     console.log('Procesando fila:', rowValues);
 
@@ -213,7 +217,7 @@ async function processDataInChunks(data: any[], organizationId: string, tx: any)
   // Procesar receivables en chunks
   for (const chunk of chunks) {
     try {
-      const receivablesData = chunk.map(row => {
+      const receivablesData = chunk.map((row: RowData) => {
         const [identifier] = Object.values(row)[0].split(',');
         const contact = contactsMap.get(identifier);
         

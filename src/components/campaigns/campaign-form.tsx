@@ -234,7 +234,7 @@ export function CampaignForm({ onSubmit, campaign, audiences, isSubmitting }: Ca
                       <FormLabel>Audiencias</FormLabel>
                       <FormControl>
                         <AudienceSelect
-                          audiences={audiences}
+                          audiences={audiences || []}
                           selectedIds={field.value}
                           onSelect={field.onChange}
                         />

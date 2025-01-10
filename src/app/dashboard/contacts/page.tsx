@@ -5,9 +5,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getContacts } from "@/actions/contacts"
 import { TableSkeleton } from "@/components/table-skeleton"
 import { Contact, ContactPhone } from "@prisma/client"
+import { ColumnDef } from "@tanstack/react-table"
 
-interface ContactWithPhones extends Contact {
-  phones: ContactPhone[];
+interface ContactWithPhones extends Omit<Contact, 'createdAt' | 'updatedAt'> {
+  createdAt: string;
+  updatedAt: string;
+  phones: Array<Omit<ContactPhone, 'createdAt' | 'updatedAt'> & {
+    createdAt: string;
+    updatedAt: string;
+  }>;
 }
 
 export const metadata = {
@@ -27,7 +33,7 @@ export default async function ContactsPage() {
       createdAt: phone.createdAt.toISOString(),
       updatedAt: phone.updatedAt.toISOString()
     }))
-  }));
+  })) as ContactWithPhones[];
 
   return (
     <div className="container mx-auto py-6">
@@ -41,7 +47,7 @@ export default async function ContactsPage() {
           </div>
         ) : (
           <Suspense fallback={<TableSkeleton columnCount={7} rowCount={5} />}>
-            <ContactsTable columns={columns} data={contacts} />
+            <ContactsTable columns={columns as ColumnDef<ContactWithPhones, any>[]} data={contacts} />
           </Suspense>
         )}
       </div>

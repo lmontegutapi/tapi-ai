@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { CampaignDialog } from "./campaign-dialog";
 import { createCampaign } from "@/actions/campaigns";
+import { useRouter } from "next/navigation";
 
 interface EmptyCampaignsProps {
   agents?: any[];
@@ -10,6 +11,15 @@ interface EmptyCampaignsProps {
 }
 
 export function EmptyCampaigns({ agents, audiences }: EmptyCampaignsProps) {
+  const router = useRouter();
+
+  const handleSubmit = async (data: any) => {
+    const result = await createCampaign(data);
+    if (result.success) {
+      router.refresh();
+    }
+  };
+
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center animate-in fade-in-50">
       <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
@@ -26,7 +36,7 @@ export function EmptyCampaigns({ agents, audiences }: EmptyCampaignsProps) {
 
       <CampaignDialog 
         audiences={audiences}
-        onSubmit={createCampaign}
+        onSubmit={handleSubmit}
         trigger={
           <Button size="lg" className="mt-4">
             <Plus className="mr-2 h-4 w-4" />

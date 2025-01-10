@@ -39,7 +39,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const receivableSchema = z.object({
   amountCents: z.coerce.number().positive("El monto debe ser positivo"),
   dueDate: z.string(),
-  status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PENDING_DUE"]),
+  status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PROMISED", "PARTIALLY_PAID", "BROKEN_PROMISE"]),
   notes: z.string().optional(),
   contact: z.object({
     name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -233,9 +233,9 @@ export function EditReceivableDrawer({
                           <SelectItem value="OPEN">Abierta</SelectItem>
                           <SelectItem value="CLOSED">Cerrada</SelectItem>
                           <SelectItem value="OVERDUE">Vencida</SelectItem>
-                          <SelectItem value="PENDING_DUE">
-                            Por vencer
-                          </SelectItem>
+                          <SelectItem value="PROMISED">Prometida</SelectItem>
+                          <SelectItem value="PARTIALLY_PAID">Pago Parcial</SelectItem>
+                          <SelectItem value="BROKEN_PROMISE">Promesa Rota</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

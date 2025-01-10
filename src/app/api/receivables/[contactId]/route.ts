@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+interface OrganizationSettings {
+  payments?: Record<string, boolean>;
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { contactId: string } }
@@ -28,7 +32,7 @@ export async function GET(
     return NextResponse.json({
       receivables: result,
       contact: result[0]?.contact ?? null,
-      paymentMethods: result[0]?.contact?.organization?.settings?.payments ?? null,
+      paymentMethods: (result[0]?.contact?.organization?.settings as OrganizationSettings)?.payments ?? null,
     });
   } catch (error) {
     console.error(error);

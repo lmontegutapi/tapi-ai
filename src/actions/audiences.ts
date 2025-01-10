@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { ContactChannel, DelinquencyBucket } from "@prisma/client";
+import { ContactChannel, DelinquencyBucket, ReceivableStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getDelinquencyBucket } from "@/lib/audience-utils";
 import { session as serverSession } from "@/lib/auth-server";
@@ -140,8 +140,8 @@ export async function updateAudience(
         delinquencyBucket: data.delinquencyBucket,
         contactPreference: data.contactPreference,
         metadata: {
-          ...(audience.metadata || {}),
-          ...(data.metadata || {}),
+          ...((audience.metadata || {}) as Record<string, any>),
+          ...((data.metadata || {}) as Record<string, any>),
           lastUpdated: new Date().toISOString(),
           updatedBy: session.user.id
         }
@@ -277,7 +277,7 @@ export async function getAudienceDetails(audienceId: string) {
     const receivablesByStatus = audience.receivables.reduce((acc, r) => ({
       ...acc,
       [r.status]: (acc[r.status] || 0) + 1
-    }), {});
+    }), {} as Record<ReceivableStatus, number>);
 
     return {
       success: true,

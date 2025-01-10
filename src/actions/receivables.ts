@@ -18,7 +18,7 @@ interface ParsedReceivable {
   metadata?: any;
 }
 
-type ReceivableStatus = "OPEN" | "CLOSED" | "OVERDUE" | "PENDING_DUE";
+type ReceivableStatus = "OPEN" | "CLOSED" | "OVERDUE" | "PROMISED" | "PARTIALLY_PAID" | "BROKEN_PROMISE";
 
 interface UpdateReceivableInput {
   amountCents: number;
@@ -36,6 +36,10 @@ type ReceivableMetadata = {
   lastUpdatedBy: string;
   lastStatus: ReceivableStatus;
   statusChangedAt: Date;
+}
+
+interface OrganizationSettings {
+  payments?: Record<string, boolean>;
 }
 
 export async function uploadReceivables(formData: FormData) {
@@ -113,6 +117,7 @@ export async function createReceivables(
           contact = await tx.contact.create({
             data: {
               organizationId: organizationId || "",
+              identifier: `CONT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               name: receivable.contactName,
               phone: receivable.contactPhone,
               email: receivable.contactEmail,
@@ -125,6 +130,7 @@ export async function createReceivables(
           data: {
             organizationId: organizationId || "",
             contactId: contact.id,
+            identifier: receivable.identifier || `RCV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             paymentId: receivable.identifier || `PAY-${Date.now()}`,
             amountCents: receivable.amountCents,
             currency: "MXN",
@@ -244,7 +250,7 @@ export async function updateReceivable(
       })
 
       const isPastDue = validatedData.dueDate < new Date()
-      const currentMetadata = receivable.metadata as ReceivableMetadata ?? {}
+      const currentMetadata = receivable.metadata as unknown as ReceivableMetadata ?? {}
 
       const updatedReceivable = await tx.receivable.update({
         where: { id: receivableId },
@@ -253,7 +259,7 @@ export async function updateReceivable(
           dueDate: validatedData.dueDate,
           status: validatedData.status,
           isPastDue,
-          isOpen: validatedData.status === "OPEN" || validatedData.status === "PENDING_DUE",
+          isOpen: validatedData.status === "OPEN" || validatedData.status === "PROMISED",
           metadata: {
             ...currentMetadata,
             lastUpdatedAt: new Date(),
@@ -338,7 +344,7 @@ export async function initiateCall(receivableId: string, campaignId?: string, is
       where: { id: receivableId },
       include: { 
         contact: true,
-        campaign: true 
+        campaigns: true 
       },
     });
 
@@ -497,7 +503,7 @@ export async function updateReceivableStatus(
 const updateReceivableSchema = z.object({
   amountCents: z.coerce.number().positive("El monto debe ser positivo"),
   dueDate: z.coerce.date(),
-  status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PENDING_DUE"]),
+  status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PROMISED", "PARTIALLY_PAID", "BROKEN_PROMISE"]),
   contact: z.object({
     name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
     phone: z.string().min(8, "El teléfono debe tener al menos 8 caracteres").nullable(),
@@ -561,7 +567,7 @@ export async function getReceivablesByContact(contactId: string) {
     }
 
     // Obtener métodos de pago habilitados de los settings
-    const enabledPaymentMethods = Object.entries(contact.organization?.settings?.payments || {})
+    const enabledPaymentMethods = Object.entries((contact.organization?.settings as OrganizationSettings)?.payments || {})
       .filter(([_, enabled]) => enabled)
       .map(([method]) => method);
 

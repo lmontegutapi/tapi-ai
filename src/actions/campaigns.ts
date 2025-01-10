@@ -174,6 +174,9 @@ export async function updateCampaign(
         organization: {
           members: { some: { userId: session.user.id } }
         }
+      },
+      include: {
+        audiences: true
       }
     });
 

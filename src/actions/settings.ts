@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { session as serverSession } from "@/lib/auth-server";
+import { Prisma } from "@prisma/client";
 
 const organizationSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -180,9 +181,9 @@ export async function updateOrganizationSettings(
       where: { id: organization.id },
       data: {
         name: data.name,
-        metadata: data.metadata
-          ? JSON.stringify(data.metadata)
-          : organization.metadata,
+        metadata: data.metadata 
+          ? data.metadata as Prisma.InputJsonValue
+          : organization.metadata as Prisma.InputJsonValue,
         logo: data.logo || organization.logo
       }
     })
@@ -337,7 +338,7 @@ export async function removeTeamMember(memberId: string) {
 }
  */
 // Obtener templates de email
-export async function getEmailTemplates() {
+/* export async function getEmailTemplates() {
   try {
     const session = await serverSession();
     if (!session) {
@@ -365,7 +366,7 @@ export async function getEmailTemplates() {
       error: "Error al obtener las plantillas"
     }
   }
-}
+} */
 
 // Obtener miembros del equipo
 export async function getTeamMembers() {

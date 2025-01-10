@@ -52,7 +52,7 @@ interface ContactWithPhones {
   }[];
 }
 
-export function ContactsTable<TData extends ContactWithPhones>({
+export function ContactsTable<TData extends any>({
   columns,
   data,
 }: ContactsTableProps<TData>) {

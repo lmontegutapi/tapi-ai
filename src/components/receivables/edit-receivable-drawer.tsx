@@ -121,7 +121,7 @@ export function EditReceivableDrawer({
 
   useEffect(() => {
     clearErrorsWhenOpen();
-  }, [open]);
+  }, []);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

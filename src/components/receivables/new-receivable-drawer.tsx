@@ -111,7 +111,7 @@ export function NewReceivableDrawer() {
 
   useEffect(() => {
     clearErrorsWhenOpen();
-  }, [openNewReceivableDrawer]);
+  }, []);
 
   return (
     <Sheet

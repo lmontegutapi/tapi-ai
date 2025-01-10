@@ -93,12 +93,11 @@ export function AudienceSummaryView({
 }: { 
   audienceDetails: ResponseAudienceDetails 
 }) {
-  if (!audienceDetails) return null;
-  const { audience, metrics } = audienceDetails.data;
-  const { receivables, campaigns } = audience;
+  const { audience, metrics } = audienceDetails?.data || { audience: null, metrics: null };
+  const { receivables = [], campaigns = [] } = audience || {};
 
   const table = useReactTable({
-    data: receivables || [],
+    data: receivables,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -107,7 +106,11 @@ export function AudienceSummaryView({
         pageSize: 7,
       },
     },
-  })
+  });
+
+  if (!audience) {
+    return <div>No hay datos disponibles</div>;
+  }
 
   return (
     <div className="container py-6">
@@ -123,7 +126,6 @@ export function AudienceSummaryView({
         </Badge>
       </div>
 
-      {/* Métricas Principales */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid grid-cols-4 gap-4">
@@ -148,7 +150,6 @@ export function AudienceSummaryView({
       </Card>
 
       <div className="flex gap-6">
-        {/* Lista de Deudas en Tabla - Lado izquierdo */}
         <div className="flex-1">
           <Card>
             <CardHeader>
@@ -225,20 +226,21 @@ export function AudienceSummaryView({
           </Card>
         </div>
 
-        {/* Campañas Activas - Card flotante derecha */}
         <div className="w-[350px]">
           <div className="sticky top-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Campañas Activas</span>
-                  <Badge variant="secondary">{audience.campaigns.filter(c => c.status === "ACTIVE").length}</Badge>
+                  <Badge variant="secondary">
+                    {campaigns.filter(c => c.status === "ACTIVE").length}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px] pr-4">
                   <div className="space-y-4">
-                    {audience.campaigns
+                    {campaigns
                       .filter(c => c.status === "ACTIVE")
                       .map((campaign) => (
                         <Card key={campaign.id} className="bg-muted/50">

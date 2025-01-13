@@ -35,17 +35,28 @@ export async function sendWhatsappNotification(receivableId: string) {
   }
 
   const amountFormatted = formatCurrency(receivable.amountCents);
-  const linkPortalContact = `${process.env.NEXT_PUBLIC_APP_URL}/payment/${contact.id}`;
 
   const bodyWhatsappMessage = {
     companyName: organization.name,
     amount: amountFormatted,
     expirationDate: receivable.dueDate,
     phone: contact.phone,
-    link: linkPortalContact,
+    contactId: contact.id,
   }
 
-  const result = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/whatsapp/send-message`, bodyWhatsappMessage);
+  console.log("bodyWhatsappMessage", bodyWhatsappMessage)
+
+  const result = await axios.post(`${process.env.TAPI_AWS_WHATSAPP_URL}`, {
+    body: {
+      messages: [bodyWhatsappMessage]
+    },
+  }, {
+    headers: {
+      'x-api-key': process.env.TAPI_AWS_WHATSAPP_API_KEY,
+    },
+  });
+
+  console.log("result whatsapp", result)
 
   if (result.status !== 200) {
     return { success: false, error: "Error al enviar el mensaje de whatsapp" };

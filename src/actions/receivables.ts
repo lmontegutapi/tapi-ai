@@ -192,8 +192,6 @@ export async function getReceivables() {
       }
     });
 
-    console.log("Receivables111", receivables)
-
     return { success: true, data: receivables };
   } catch (error) {
     console.error("Error getting receivables:", error);

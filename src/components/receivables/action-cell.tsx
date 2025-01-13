@@ -59,6 +59,16 @@ export function ActionCell({ receivable }: ActionCellProps) {
   const handleSendWhatsappNotification = async () => {
     try {
       const result = await sendWhatsappNotification(receivable.id)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      console.log("result whatsapp", result)
+
+      toast({
+        title: "Notificación enviada",
+        description: "La notificación se ha enviado correctamente"
+      })
     } catch (error) {
       toast({
         variant: "destructive",

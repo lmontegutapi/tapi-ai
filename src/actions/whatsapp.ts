@@ -12,27 +12,37 @@ export async function sendWhatsappNotification(receivableId: string) {
     return { success: false, error: "No se pudo obtener la sesión del usuario" };
   }
 
+  console.log("session", session)
+
   const organization = await prisma.organization.findUnique({
-    where: { id: session.user.id },
+    where: { id: session.session.activeOrganizationId! },
   });
 
   if (!organization) {
     return { success: false, error: "Organización no encontrada" };
   }
 
+  console.log("organization", organization)
+
   const receivable = await prisma.receivable.findUnique({
     where: { id: receivableId },
     include: { contact: true },
   });
 
+  console.log("receivable", receivable)
+
   if (!receivable) {
     return { success: false, error: "Recibo no encontrado" };
   }
+
+  console.log("receivable", receivable)
 
   const contact = receivable.contact;
   if (!contact) {
     return { success: false, error: "Contacto no encontrado" };
   }
+
+  console.log("contact", contact)
 
   const amountFormatted = formatCurrency(receivable.amountCents);
 
@@ -47,9 +57,7 @@ export async function sendWhatsappNotification(receivableId: string) {
   console.log("bodyWhatsappMessage", bodyWhatsappMessage)
 
   const result = await axios.post(`${process.env.TAPI_AWS_WHATSAPP_URL}`, {
-    body: {
-      messages: [bodyWhatsappMessage]
-    },
+    messages: [bodyWhatsappMessage]
   }, {
     headers: {
       'x-api-key': process.env.TAPI_AWS_WHATSAPP_API_KEY,
@@ -62,5 +70,5 @@ export async function sendWhatsappNotification(receivableId: string) {
     return { success: false, error: "Error al enviar el mensaje de whatsapp" };
   }
 
-  return { success: true, data: result };
+  return { success: true, data: result.data };
 }

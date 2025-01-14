@@ -44,12 +44,16 @@ export async function sendWhatsappNotification(receivableId: string) {
 
   console.log("contact", contact)
 
-  const amountFormatted = formatCurrency(receivable.amountCents);
+  const amountDecimals = receivable.amountCents / 100;
+  // Expiration date in format yyyy/dd/mm
+  const expirationDate = receivable.dueDate.toISOString().split('T')[0];
 
+  console.log("expirationDate", expirationDate)
+  
   const bodyWhatsappMessage = {
     companyName: organization.name,
-    amount: amountFormatted,
-    expirationDate: receivable.dueDate,
+    amount: amountDecimals,
+    expirationDate: expirationDate,
     phone: contact.phone,
     contactId: contact.id,
   }
@@ -64,7 +68,7 @@ export async function sendWhatsappNotification(receivableId: string) {
     },
   });
 
-  console.log("result whatsapp", result)
+  console.log("result whatsapp", result.data)
 
   if (result.status !== 200) {
     return { success: false, error: "Error al enviar el mensaje de whatsapp" };

@@ -65,22 +65,22 @@ export function CampaignForm({ onSubmit, campaign, isSubmitting }: CampaignFormP
       agentId: campaign?.agentId ?? "",
       voiceId: campaign?.voiceId ?? "",
       audienceIds: campaign?.audienceIds ?? [],
-      contactPreferences: campaign?.contactPreferences ?? {
+      /* contactPreferences: campaign?.contactPreferences ?? {
         rules: [
           { enabled: true, daysFromDueDate: -3, channel: "WHATSAPP" },
           { enabled: true, daysFromDueDate: 0, channel: "VOICE_AI" },
           { enabled: true, daysFromDueDate: 3, channel: "WHATSAPP" }
         ]
-      }
+      } */
     }
   });
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-3 gap-8">
+        <div className="flex flex-col gap-8 w-full">
           {/* Columna izquierda - Información básica */}
-          <div className="col-span-2 space-y-6">
+          <div className="col-span-2 space-y-6 w-full">
             <div>
               <h3 className="text-lg font-medium mb-4">Información básica</h3>
               <div className="space-y-4">
@@ -253,7 +253,7 @@ export function CampaignForm({ onSubmit, campaign, isSubmitting }: CampaignFormP
           </div>
 
           {/* Columna derecha - Reglas de contacto */}
-          <div>
+          {/* <div>
             <h3 className="text-lg font-medium mb-4">Reglas de contacto</h3>
             <div className="space-y-4">
               <FormField
@@ -364,7 +364,7 @@ export function CampaignForm({ onSubmit, campaign, isSubmitting }: CampaignFormP
                 )}
               />
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex justify-end gap-4 py-4">

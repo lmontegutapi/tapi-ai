@@ -1,7 +1,14 @@
 import { PaymentType } from "@prisma/client";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building, Banknote, CreditCard, Wallet } from "lucide-react";
+import { Building, Banknote, CreditCard, Wallet, Copy } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface PaymentMethodsProps {
   receivable: any;
@@ -12,30 +19,38 @@ const PAYMENT_CONFIG = {
   CASH: {
     icon: Building,
     title: "Pago Presencial",
-    description: "Paga en nuestras sucursales"
+    description: "Paga en nuestras sucursales",
   },
   BANK_TRANSFER: {
     icon: Banknote,
     title: "Transferencia",
-    description: "Transfiere a nuestra cuenta"
+    description: "Transfiere a nuestra cuenta",
   },
   CARD: {
     icon: CreditCard,
     title: "Tarjeta",
-    description: "Paga con débito o crédito"
+    description: "Paga con débito o crédito",
   },
   DIGITAL_WALLET: {
     icon: Wallet,
     title: "Billetera Digital",
-    description: "Mercado Pago, Ualá, MODO"
-  }
+    description: "Mercado Pago, Ualá, MODO",
+  },
 } as const;
 
-export function PaymentMethods({ receivable, organization }: PaymentMethodsProps) {
+export function PaymentMethods({
+  receivable,
+  organization,
+}: PaymentMethodsProps) {
   // Filtrar solo los métodos habilitados
   const enabledMethods = Object.entries(organization?.settings?.payments || {})
     .filter(([_, enabled]) => enabled)
     .map(([method]) => method as PaymentType);
+
+  const generarCuentaBancaria = () =>
+    Array.from({ length: 16 }, () => Math.floor(Math.random() * 10)).join(
+      ""
+    );
 
   if (enabledMethods.length === 0) {
     return (
@@ -51,6 +66,13 @@ export function PaymentMethods({ receivable, organization }: PaymentMethodsProps
       </Card>
     );
   }
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Cuenta clabe copiada",
+    });
+  };
 
   return (
     <Card>
@@ -70,18 +92,27 @@ export function PaymentMethods({ receivable, organization }: PaymentMethodsProps
                 <div>
                   <p className="font-medium">{config.title}</p>
                   <p className="text-sm text-muted-foreground">
-                    {config.description}
+                    {
+                      method === "BANK_TRANSFER"
+                        ? `Clabe: ${generarCuentaBancaria()}`
+                        : config.description
+                    }
                   </p>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  // Aquí iría la lógica para cada método de pago
-                }}
-              >
-                Pagar
-              </Button>
+              {method === "BANK_TRANSFER" ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleCopy(generarCuentaBancaria());
+                  }}
+                >
+                  <Copy className="mr-1 h-4 w-4" />
+                  Copiar
+                </Button>
+              ) : (
+                <Button variant="outline">Pagar</Button>
+              )}
             </div>
           );
         })}

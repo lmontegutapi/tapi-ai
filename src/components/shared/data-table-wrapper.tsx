@@ -10,6 +10,7 @@ interface DataTableWrapperProps<TData> {
   searchKey?: string;
   defaultVisibility?: VisibilityState;
   actionComponent?: React.ReactNode;
+  secondaryActionComponent?: React.ReactNode;
  }
  
  export function DataTableWrapper<TData>({

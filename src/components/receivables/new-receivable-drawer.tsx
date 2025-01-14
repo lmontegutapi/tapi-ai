@@ -38,6 +38,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect } from "react";
 
 const receivableSchema = z.object({
+  identifier: z.string().min(1, "El identificador es requerido"),
   amountCents: z.coerce.number().positive("El monto debe ser positivo"),
   dueDate: z.string().transform((str) => new Date(str)),
   status: z.enum(["OPEN", "CLOSED", "OVERDUE", "PENDING_DUE"]),
@@ -57,6 +58,7 @@ export function NewReceivableDrawer() {
   const form = useForm<z.infer<typeof receivableSchema>>({
     resolver: zodResolver(receivableSchema),
     defaultValues: {
+      identifier: "",
       amountCents: 0,
       status: "OPEN",
       dueDate: new Date(),
@@ -72,6 +74,7 @@ export function NewReceivableDrawer() {
   async function onSubmit(data: z.infer<typeof receivableSchema>) {
     try {
       const receivableData = {
+        identifier: data.identifier,
         amountCents: data.amountCents,
         dueDate: data.dueDate,
         status: data.status,
@@ -137,6 +140,20 @@ export function NewReceivableDrawer() {
             <ScrollArea className="max-h-max">
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Información de contacto</h4>
+                <FormField
+                  control={form.control}
+                  name="identifier"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Identificador</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <FormField
                   control={form.control}
                   name="contact.name"

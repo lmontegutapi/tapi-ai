@@ -44,6 +44,7 @@ interface DataTableProps<TData, TValue> {
   defaultVisibility?: VisibilityState;
   filterComponent?: React.ReactNode;
   actionComponent?: React.ReactNode;
+  secondaryActionComponent?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -54,6 +55,7 @@ export function DataTable<TData, TValue>({
   defaultVisibility = {},
   filterComponent,
   actionComponent,
+  secondaryActionComponent,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -144,6 +146,7 @@ export function DataTable<TData, TValue>({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          {secondaryActionComponent}
           {actionComponent}
         </div>
       </div>

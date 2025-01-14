@@ -6,6 +6,7 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { DataTableWrapper } from "@/components/shared/data-table-wrapper";
 import { columns } from "@/components/receivables/columns";
 import { NewReceivableDrawer } from "@/components/receivables/new-receivable-drawer";
+import { UploadLinkButton } from "@/components/receivables/upload-link-button";
 
 export const dynamic = 'force-dynamic';
 export default async function ReceivablesPage() {
@@ -22,8 +23,9 @@ export default async function ReceivablesPage() {
         data={receivables}
         columns={columns}
         EmptyStateComponent={EmptyState}
-        searchKey="contact"
+        searchKey="name"
         actionComponent={<NewReceivableDrawer />}
+        secondaryActionComponent={<UploadLinkButton />}
         defaultVisibility={{
           contact: true,
           amountCents: true,
